@@ -82,32 +82,35 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 **Daily** (`Daily/YYYY-MM-DD.md`):
 ```
 ---
+type: daily
 date: YYYY-MM-DD
-tags: [daily]
+tags: []
 ---
 ## Focus
-## Wins
-## Blockers
 ## Notes
+## Follow-up
+## Related notes
 ## AI Session
 ```
 
 **Weekly** (`Weekly/YYYY-Www.md`):
 ```
 ---
+type: weekly
 week: YYYY-Www
-tags: [weekly]
+tags: []
 ---
 ## Intentions
 ## Review
-## Links
+## Related notes
 ```
 
 **Monthly** (`Monthly/YYYY-MM.md`):
 ```
 ---
+type: monthly
 month: YYYY-MM
-tags: [monthly]
+tags: []
 ---
 ## Theme
 ## Key Events
@@ -117,21 +120,31 @@ tags: [monthly]
 **Project** (`Projects/<slug>.md`):
 ```
 ---
-status: active | paused | done
-goal: one-line goal
-due: YYYY-MM-DD
-tags: [project]
+type: project
+status: active | completed | archived
+review: YYYY-MM-DD
+tags: []
 ---
-## Next Action
-## Log
+## Outcome
+## Next actions
+## Related notes
+```
+
+**Reference** (`References/<slug>.md`):
+```
+---
+type: reference
+topic: topic-name
+tags: []
+---
 ```
 
 ## Bases Schema
 
 Recommended YAML frontmatter properties for notes consumed by each Base:
 
-- **Journal.base** — `Daily/` notes: `date`, `tags`
-- **Projects.base** — `Projects/` notes: `status`, `goal`, `due`
+- **Journal.base** — `Daily/` notes: `type: daily`, `date`, `tags`
+- **Projects.base** — `Projects/` notes: `type: project`, `status`, `review`
 - **Meetings.base** — meeting notes: `date`, `attendees`, `decision`
 - **People.base** — people notes: `name`, `context`, `last-contact`
 - **Books.base** — `title`, `author`, `status` (reading/done), `rating`
