@@ -2,6 +2,8 @@
 
 `second-brain` is a Claude Code plugin repository for running an Obsidian-backed Knowledge OS: a guarded external cognition stack where notes act as long-term memory, Claude Code acts as executive function, and hooks act as a deterministic nervous system.
 
+This version adds live session capture so notes keep accumulating while Claude Code is working, not only after the session ends.
+
 ## Core Model
 
 - Obsidian vault: durable long-term memory
@@ -24,13 +26,29 @@
 - Blocks edits to protected files such as `.git/` and common secret files
 - Rejects write-capable SQL commands when database tools are invoked from Bash
 - Runs lightweight syntax validation after editing `json`, `sh`, and `py` files
+- Creates or reuses `Daily/YYYY-MM-DD.md` and appends a live `## AI Session` trail during the session
+- Creates `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md` for detailed per-session capture
 - Provides starter commands and specialist agents for operating the system
 
-## Near-Term Extensions
+## Session Flow
 
-- Connect the plugin to the real Obsidian vault layout and note schemas
-- Add session summaries and memory compaction workflows
-- Introduce durable logs for blocked actions and hook outcomes
-- Add structured Bases sync and health checks
+- `SessionStart`: create the daily note if needed and open a session note
+- `UserPromptSubmit`: append a concise line to `Daily/... ## AI Session` and the full prompt to the session note
+- `PostToolUse` for `Write|Edit|MultiEdit`: append edited file activity to the session note
+- `Stop`: append a closing line to the daily note and session note
+
+## Configuration
+
+The plugin reads these environment variables from [`settings.json`](./settings.json):
+
+- `SECOND_BRAIN_VAULT_PATH`
+- `SECOND_BRAIN_DAILY_DIR`
+- `SECOND_BRAIN_SESSION_DIR`
+- `SECOND_BRAIN_CAPTURE_STRICT`
+
+With the current defaults, session notes accumulate in the Obsidian vault at:
+
+- `Daily/YYYY-MM-DD.md`
+- `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md`
 
 This repository is the control plane, not the vault itself. Its job is to make the AI side of the system safer, more legible, and easier to evolve.

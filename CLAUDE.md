@@ -58,7 +58,7 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 
 - Location: `/Users/masudaso/Documents/Obsidian Vault/`
 - This section serves as the Knowledge OS constitution for that vault.
-- Session capture: at session end, distill key insights to `Daily/YYYY-MM-DD.md` under the `## AI Session` heading.
+- Session capture: accumulate prompts and key events during the session, then leave the distilled trail in `Daily/YYYY-MM-DD.md` under the `## AI Session` heading.
 - All ambient knowledge — personal preferences, project learnings, AI-generated insights — goes to the vault, not Claude auto memory.
 
 ## Vault Architecture
@@ -149,7 +149,8 @@ Recommended YAML frontmatter properties for notes consumed by each Base:
 - Route all new captures to `Daily/YYYY-MM-DD.md ## Notes` first.
 - Distill durable knowledge to `References/` or the appropriate Base after the session.
 - Never delete vault content — use `#archived` tag or move to `Archive/`.
-- AI session learnings → append to `Daily/YYYY-MM-DD.md ## AI Session`.
+- AI session learnings -> append to `Daily/YYYY-MM-DD.md ## AI Session`.
+- Detailed live capture -> `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md`.
 
 ## Tagging Conventions
 
