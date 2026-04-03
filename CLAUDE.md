@@ -51,3 +51,122 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 - Never write to `.git/` or obvious secret material.
 - Treat destructive database operations as disallowed unless the user explicitly sets up a separate write-capable path.
 - If a hook or validation script fails, surface the problem clearly rather than silently proceeding.
+
+---
+
+## Vault
+
+- Location: `/Users/masudaso/Documents/Obsidian Vault/`
+- This section serves as the Knowledge OS constitution for that vault.
+- Session capture: at session end, distill key insights to `Daily/YYYY-MM-DD.md` under the `## AI Session` heading.
+- All ambient knowledge — personal preferences, project learnings, AI-generated insights — goes to the vault, not Claude auto memory.
+
+## Vault Architecture
+
+| Directory | Cognitive Analogy | Purpose |
+|-----------|-------------------|---------|
+| `Daily/` | Episodic memory | Daily log: events, thoughts, AI session notes |
+| `Weekly/` | Working memory consolidation | Weekly review and intentions |
+| `Monthly/` | Long-term episodic | Monthly themes and retrospectives |
+| `Projects/` | Procedural memory | Active work: status, goal, next actions |
+| `Bases/` | Semantic memory DB | Structured facts: books, people, meetings, etc. |
+| `References/` | Semantic memory | Permanent concept and source notes |
+| `Ideas/` | Association cortex | Loose, unprocessed sparks |
+| `Clippings/` | Sensory buffer | Web clips awaiting processing |
+| `Meta/` | Metacognition | Vault rules, system notes, templates |
+| `Canvases/` | Spatial reasoning | Visual maps and concept diagrams |
+
+## Note Templates
+
+**Daily** (`Daily/YYYY-MM-DD.md`):
+```
+---
+date: YYYY-MM-DD
+tags: [daily]
+---
+## Focus
+## Wins
+## Blockers
+## Notes
+## AI Session
+```
+
+**Weekly** (`Weekly/YYYY-Www.md`):
+```
+---
+week: YYYY-Www
+tags: [weekly]
+---
+## Intentions
+## Review
+## Links
+```
+
+**Monthly** (`Monthly/YYYY-MM.md`):
+```
+---
+month: YYYY-MM
+tags: [monthly]
+---
+## Theme
+## Key Events
+## Retrospective
+```
+
+**Project** (`Projects/<slug>.md`):
+```
+---
+status: active | paused | done
+goal: one-line goal
+due: YYYY-MM-DD
+tags: [project]
+---
+## Next Action
+## Log
+```
+
+## Bases Schema
+
+Recommended YAML frontmatter properties for notes consumed by each Base:
+
+- **Journal.base** — `Daily/` notes: `date`, `tags`
+- **Projects.base** — `Projects/` notes: `status`, `goal`, `due`
+- **Meetings.base** — meeting notes: `date`, `attendees`, `decision`
+- **People.base** — people notes: `name`, `context`, `last-contact`
+- **Books.base** — `title`, `author`, `status` (reading/done), `rating`
+- **Clippings.base** — `source`, `date`, `tags`
+- **Movies.base / Shows.base** — `title`, `status` (watched/want), `rating`
+- **Music.base / Podcasts.base** — `title`, `artist`, `status`, `rating`
+- **Places.base / Trips.base** — `location`, `date`, `tags`
+- **Recipes.base** — `title`, `cuisine`, `time`, `rating`
+- **Ratings.base** — cross-domain: `title`, `type`, `rating`, `date`
+
+## AI Behavior Rules
+
+- Read before writing: inspect the target note before any modification.
+- Discover, don't invent: search existing notes before creating new ones.
+- Prefer append over rewrite for Daily and Project notes.
+- Route all new captures to `Daily/YYYY-MM-DD.md ## Notes` first.
+- Distill durable knowledge to `References/` or the appropriate Base after the session.
+- Never delete vault content — use `#archived` tag or move to `Archive/`.
+- AI session learnings → append to `Daily/YYYY-MM-DD.md ## AI Session`.
+
+## Tagging Conventions
+
+- Status: `#active`, `#archived`, `#someday`, `#waiting`
+- Type: `#fact`, `#interpretation`, `#question`, `#idea`, `#project`
+- Domain: `#tech`, `#ai`, `#personal`, `#work`, `#learning`
+
+## L4 Ambient Capture
+
+ALL knowledge from Claude Code sessions — personal preferences, project learnings, AI-generated insights — MUST go to the vault, not Claude auto memory.
+
+Intake point: `Daily/YYYY-MM-DD.md ## AI Session`.
+Durable distillations: `References/` or the appropriate Base.
+
+## Note Lifecycle
+
+```
+Clippings/ / Ideas/    →    Daily/ (tagged + linked)    →    References/ or Base    →    Archive/
+   (capture)                     (process)                       (distill)              (#archived)
+```
