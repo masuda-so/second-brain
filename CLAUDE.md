@@ -79,17 +79,22 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 
 ## Note Templates
 
+Source: [masuda-so/Template-Vault](https://github.com/masuda-so/Template-Vault)
+
 **Daily** (`Daily/YYYY-MM-DD.md`):
 ```
 ---
 type: daily
 date: YYYY-MM-DD
-tags: []
+tags:
+  - journal
 ---
-## Focus
-## Notes
-## Follow-up
-## Related notes
+## 今日のフォーカス
+## メモ
+> [!note] 振り返り
+## フォローアップ
+- [ ] items
+## 関連ノート
 ## AI Session
 ```
 
@@ -98,36 +103,51 @@ tags: []
 ---
 type: weekly
 week: YYYY-Www
-tags: []
+reviewed: YYYY-MM-DD
+tags:
+  - planning
+  - review
 ---
-## Intentions
-## Review
-## Related notes
+## 進行中プロジェクト
+## 昇格候補アイデア
+## ブロッカー
+> [!tip] 週次の要約
+> 重要度の高い項目だけ Projects に昇格し、残りは保留または整理する。
+## 来週の重点
+## 関連ノート
 ```
 
 **Monthly** (`Monthly/YYYY-MM.md`):
 ```
 ---
 type: monthly
-month: YYYY-MM
-tags: []
+period: YYYY-MM
+tags:
+  - monthly
+  - strategy
 ---
-## Theme
-## Key Events
-## Retrospective
+## 優先事項
+## うまくいったこと
+## 改善点
+> [!important] 月次判断
+> 実行可能な項目は Projects に移し、原則は References に残す。
+## 来月の焦点
+## 関連ノート
 ```
 
 **Project** (`Projects/<slug>.md`):
 ```
 ---
 type: project
-status: active | completed | archived
+status: active
 review: YYYY-MM-DD
 tags: []
 ---
-## Outcome
-## Next actions
-## Related notes
+## ゴール
+## 次のアクション
+- [ ] items
+## 添付
+## 関連ノート
 ```
 
 **Reference** (`References/<slug>.md`):
@@ -135,8 +155,38 @@ tags: []
 ---
 type: reference
 topic: topic-name
+---
+## 目的
+## 手順
+> [!important] 再利用ルール
+## 関連資料
+```
+
+**Idea** (`Ideas/<slug>.md`):
+```
+---
+type: idea
+status: incubating
+created: YYYY-MM-DD
 tags: []
 ---
+## プロジェクト化の条件
+- 今月実装したい
+- 複数ステップが必要
+- 他フォルダへ影響がある
+> [!note] 次の扱い
+## 下書き素材
+```
+
+**Clipping** (`Clippings/<slug>.md`):
+```
+---
+type: clipping
+source: https://...
+captured: YYYY-MM-DD
+---
+## メモ
+- 引用
 ```
 
 ## Bases Schema
@@ -160,7 +210,7 @@ Recommended YAML frontmatter properties for notes consumed by each Base:
 - Read before writing: inspect the target note before any modification.
 - Discover, don't invent: search existing notes before creating new ones.
 - Prefer append over rewrite for Daily and Project notes.
-- Route all new captures to `Daily/YYYY-MM-DD.md ## Notes` first.
+- Route all new captures to `Daily/YYYY-MM-DD.md ## メモ` first.
 - Distill durable knowledge to `References/` or the appropriate Base after the session.
 - Never delete vault content — use `#archived` until the vault defines a dedicated archive location.
 - AI session learnings -> append to `Daily/YYYY-MM-DD.md ## AI Session`.
