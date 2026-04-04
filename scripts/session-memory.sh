@@ -68,52 +68,76 @@ append_under_heading() {
 
   if command -v python3 >/dev/null 2>&1; then
     APPEND_CONTENT="$content" python3 - "$path" "$heading" <<'PY'
-import pathlib
-import os
-import sys
+import pathlib, os, sys, fcntl, time
 
 path = pathlib.Path(sys.argv[1])
 heading = sys.argv[2]
 content = os.environ["APPEND_CONTENT"]
 marker = f"## {heading}"
 
-text = path.read_text() if path.exists() else ""
-if text and not text.endswith("\n"):
-    text += "\n"
+# Advisory file lock — same lockfile convention as harvest.py
+lock_path = path.parent / f".{path.name}.lock"
+lock_path.parent.mkdir(parents=True, exist_ok=True)
+lf = open(lock_path, "w")
+acquired = False
+try:
+    try:
+        fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        acquired = True
+    except OSError:
+        for _ in range(100):
+            time.sleep(0.05)
+            try:
+                fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+                break
+            except OSError:
+                pass
+    if not acquired:
+        print(f"second-brain: lock timeout for {path.name}, skipping write", file=sys.stderr)
+        sys.exit(0)
 
-lines = text.splitlines(keepends=True)
-start = None
-for idx, line in enumerate(lines):
-    if line.strip() == marker:
-        start = idx
-        break
+    text = path.read_text() if path.exists() else ""
+    if text and not text.endswith("\n"):
+        text += "\n"
 
-if start is None:
-    if lines and lines[-1].strip():
-        lines.append("\n")
-    lines.append(marker + "\n")
-    start = len(lines) - 1
+    lines = text.splitlines(keepends=True)
+    start = None
+    for idx, line in enumerate(lines):
+        if line.strip() == marker:
+            start = idx
+            break
 
-insert_at = len(lines)
-for idx in range(start + 1, len(lines)):
-    if lines[idx].startswith("## "):
-        insert_at = idx
-        break
+    if start is None:
+        if lines and lines[-1].strip():
+            lines.append("\n")
+        lines.append(marker + "\n")
+        start = len(lines) - 1
 
-block = content
-if not block.endswith("\n"):
-    block += "\n"
+    insert_at = len(lines)
+    for idx in range(start + 1, len(lines)):
+        if lines[idx].startswith("## "):
+            insert_at = idx
+            break
 
-is_multiline = "\n" in block.rstrip("\n")
+    block = content
+    if not block.endswith("\n"):
+        block += "\n"
 
-if is_multiline and insert_at > start + 1 and lines[insert_at - 1].strip():
-    block = "\n" + block
+    is_multiline = "\n" in block.rstrip("\n")
 
-if is_multiline and insert_at < len(lines) and not block.endswith("\n\n"):
-    block += "\n"
+    if is_multiline and insert_at > start + 1 and lines[insert_at - 1].strip():
+        block = "\n" + block
 
-lines.insert(insert_at, block)
-path.write_text("".join(lines))
+    if is_multiline and insert_at < len(lines) and not block.endswith("\n\n"):
+        block += "\n"
+
+    lines.insert(insert_at, block)
+    path.write_text("".join(lines))
+finally:
+    if acquired:
+        fcntl.flock(lf, fcntl.LOCK_UN)
+    lf.close()
 PY
     return $?
   fi
