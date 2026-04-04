@@ -277,21 +277,41 @@ def create_note(vault: pathlib.Path, target_dir: str, title: str, content: str,
         suffix = today if counter == 1 else f"{today}-{counter}"
         path = note_dir / f"{slug}-{suffix}.md"
 
-    tag_str = ", ".join(f'"{t}"' for t in (tags or []))
-    note_type = "idea" if target_dir == "Ideas" else "staged"
-    front = textwrap.dedent(f"""\
-        ---
-        title: "{title}"
-        type: {note_type}
-        created: {today}
-        source: "{source}"
-        tags: [{tag_str}]
-        promoted: false
-        ---
-    """)
+    is_idea = (target_dir == "Ideas")
+
+    if is_idea:
+        # Template-Vault canonical format for Ideas/
+        bare_tags = [t.lstrip("#") for t in (tags or [])]
+        tag_lines = "".join(f"\n  - {t}" for t in bare_tags)
+        front = textwrap.dedent(f"""\
+            ---
+            type: idea
+            status: incubating
+            created: {today}
+            tags:{tag_lines if bare_tags else " []"}
+            harvest_source: "{source}"
+            harvest_promoted: false
+            ---
+        """)
+        body = f"## プロジェクト化の条件\n\n## 下書き素材\n\n{content}\n"
+    else:
+        # Custom staging format for Meta/Promotions/ (second-brain internal)
+        bare_tags = [t.lstrip("#") for t in (tags or [])]
+        tag_lines = "".join(f"\n  - {t}" for t in bare_tags)
+        front = textwrap.dedent(f"""\
+            ---
+            type: staged
+            created: {today}
+            tags:{tag_lines if bare_tags else " []"}
+            harvest_source: "{source}"
+            harvest_promoted: false
+            ---
+        """)
+        body = content + "\n"
+
     try:
         with _file_lock(path):
-            path.write_text(front + "\n" + content + "\n")
+            path.write_text(front + "\n" + body)
     except RuntimeError as e:
         warn(f"skipping note creation {path.name}: {e}")
         raise  # propagate so caller can skip DB update
