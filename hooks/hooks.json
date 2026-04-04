@@ -24,6 +24,10 @@
                     {
                         "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/context-recall.sh"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/harvest.py extract"
                     }
                 ]
             }
@@ -59,6 +63,19 @@
                     {
                         "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-memory.sh capture-tool"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/harvest.py extract"
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash|WebFetch|WebSearch",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/harvest.py extract"
                     }
                 ]
             }
@@ -68,7 +85,21 @@
                 "hooks": [
                     {
                         "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/harvest.py checkpoint"
+                    }
+                ]
+            }
+        ],
+        "SessionEnd": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-memory.sh stop"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/harvest.py flush"
                     }
                 ]
             }
