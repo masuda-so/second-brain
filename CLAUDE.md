@@ -89,6 +89,8 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 
 Source: [masuda-so/Template-Vault](https://github.com/masuda-so/Template-Vault)
 
+Insertable template files live in `Templates/` at the vault root (core Templates plugin: folder = `Templates`). The headings below are the canonical structure; `## AI Session` is a second-brain addition not present in Template-Vault's files.
+
 **Daily** (`Daily/YYYY-MM-DD.md`):
 ```
 ---
