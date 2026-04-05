@@ -213,9 +213,20 @@ def upsert_entity(conn: sqlite3.Connection, name: str) -> int:
 
 def extract_entities(text: str) -> list:
     found: set = set()
+    # CamelCase identifiers
     found.update(re.findall(r"\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b", text))
+    # Backtick-quoted tokens
     found.update(re.findall(r"`([^`\n]{3,40})`", text))
-    return list(found)[:20]
+    # Source file names (harvest.py, package.json, etc.)
+    found.update(re.findall(
+        r"\b([\w-]+\.(?:py|js|ts|sh|json|yaml|yml|go|rs|rb|java|md))\b", text
+    ))
+    # URL domains
+    for url in re.findall(r"https?://([^/\s'\"<>()]+)", text)[:5]:
+        domain = url.split("/")[0]
+        if "." in domain and len(domain) > 4:
+            found.add(domain)
+    return list(found)[:25]
 
 
 @contextlib.contextmanager
@@ -440,6 +451,79 @@ def create_note(vault: pathlib.Path, target_dir: str, title: str, content: str,
     return path
 
 
+def create_reference_from_candidate(vault: pathlib.Path,
+                                     row: sqlite3.Row) -> pathlib.Path | None:
+    """Auto-draft a References/ note from a high-importance (L3) candidate.
+    Populates ## 目的 with the candidate content. Returns path or None on failure."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    title = row["title"] or extract_title(row["content"]) or "Untitled Reference"
+    slug = slugify(title)
+    ref_dir = vault / "References"
+    ref_path = ref_dir / f"{slug}.md"
+    if ref_path.exists():
+        return ref_path
+    purpose = row["content"][:400].strip()
+    body = textwrap.dedent(f"""\
+        ---
+        type: reference
+        topic: {title}
+        created: {today}
+        harvest_source: "{row['source']}"
+        importance: {row['importance']}
+        ---
+        ## 目的
+
+        {purpose}
+
+        ## 手順
+
+        > [!important] 再利用ルール
+
+        ## 関連資料
+    """)
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with _file_lock(ref_path):
+            if ref_path.exists():
+                return ref_path
+            ref_path.write_text(body)
+        warn(f"L3 auto-draft: References/{slug}.md")
+        return ref_path
+    except Exception as e:
+        warn(f"L3 auto-draft failed for {title}: {e}")
+        return None
+
+
+def _drain_queue(vault: pathlib.Path, conn: sqlite3.Connection,
+                 session_id: str) -> int:
+    """Drain harvest-queue.jsonl and process each event via cmd_extract.
+    Returns number of events processed."""
+    queue_file = vault / "Meta" / ".cache" / "harvest-queue.jsonl"
+    if not queue_file.exists():
+        return 0
+    try:
+        raw_lines = queue_file.read_text().strip().splitlines()
+        queue_file.unlink()
+    except Exception as e:
+        warn(f"queue: drain read failed: {e}")
+        return 0
+    processed = 0
+    for line in raw_lines:
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+            data = entry.get("data", "")
+            if data:
+                cmd_extract(data, vault, conn, session_id)
+                processed += 1
+        except Exception as e:
+            warn(f"queue: error processing event: {e}")
+    if processed:
+        warn(f"queue: drained {processed} events")
+    return processed
+
+
 # ── Candidate management ─────────────────────────────────────────────────────
 
 def enqueue_candidate(conn: sqlite3.Connection, session_id: str, source: str,
@@ -574,8 +658,15 @@ def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
 
     if tool_name == "Bash":
         cmd = tool_input.get("command", "")
+        # Git commit: extract message from tool response (e.g. "[main abc1234] feat: ...")
+        if re.match(r"git\s+commit", cmd.strip(), re.IGNORECASE):
+            commit_match = re.search(r"\[[^\]]+\]\s+(.+)", tool_resp)
+            if commit_match:
+                commit_msg = commit_match.group(1).strip()
+                if len(commit_msg) > 5:
+                    pieces.append(("git:commit", commit_msg))
         # Skip pure noise commands
-        if not BASH_NOISE_RE.match(cmd.strip()):
+        elif not BASH_NOISE_RE.match(cmd.strip()):
             out = tool_resp[:MAX_CONTENT_LEN]
             # Capture if command or output has signal
             if BASH_SIGNAL_RE.search(cmd) or BASH_SIGNAL_RE.search(out):
@@ -622,9 +713,35 @@ def cmd_checkpoint(vault: pathlib.Path, conn: sqlite3.Connection,
         warn(f"checkpoint (prompt #{prompt_count}, L1≥{threshold}): +{n1} Ideas, +{n2} staged")
 
 
+def cmd_queue(data: str, vault: pathlib.Path) -> None:
+    """Append raw event data to the harvest queue file (fast, non-blocking).
+    Called by hooks instead of extract — actual processing happens at worker/flush."""
+    if not data.strip():
+        return
+    queue_file = vault / "Meta" / ".cache" / "harvest-queue.jsonl"
+    queue_file.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.now().isoformat(timespec="seconds")
+    try:
+        with open(queue_file, "a") as f:
+            f.write(json.dumps({"queued_at": now, "data": data}) + "\n")
+    except Exception as e:
+        warn(f"queue: write failed: {e}")
+
+
+def cmd_worker(vault: pathlib.Path, conn: sqlite3.Connection,
+               session_id: str) -> None:
+    """Drain the queue file, process all events, then run checkpoint.
+    Called by Stop hook — replaces the old synchronous checkpoint."""
+    _drain_queue(vault, conn, session_id)
+    cmd_checkpoint(vault, conn, session_id)
+
+
 def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
               session_id: str) -> None:
-    """SessionEnd: final sweep + L3 checklist + periodic notes + Reference stubs."""
+    """SessionEnd: drain queue + final sweep + L3 auto-draft + periodic notes + Reference stubs."""
+    # Drain any remaining queued events before final processing
+    _drain_queue(vault, conn, session_id)
+
     prompt_count = _get_prompt_count(conn, session_id)
     threshold = _effective_l1_threshold(prompt_count)
     n1 = promote_l1(vault, conn, threshold=threshold)
@@ -664,13 +781,27 @@ def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
         ORDER BY importance DESC LIMIT 10
     """, (session_id, L3_THRESHOLD)).fetchall()
 
-    lines = [f"- {time_label} Harvest: +{promoted} Ideas, +{staged} staged to Meta/Promotions"]
-    if l3_rows:
-        lines.append(f"- {time_label} Needs manual review (→ References/):")
-        for r in l3_rows:
-            title = r["title"] or "untitled"
-            vp = r["vault_path"] or "(not yet saved)"
-            lines.append(f"  - [ ] **{title}** (score {r['importance']}) — {vp}")
+    # L3: auto-draft Reference notes instead of just flagging
+    l3_drafted = 0
+    l3_lines = []
+    for r in l3_rows:
+        ref_path = create_reference_from_candidate(vault, r)
+        title = r["title"] or "untitled"
+        if ref_path:
+            conn.execute(
+                "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
+                (str(ref_path), r["id"]),
+            )
+            conn.commit()
+            l3_drafted += 1
+            l3_lines.append(f"  - [[References/{ref_path.stem}]] (score {r['importance']})")
+        else:
+            l3_lines.append(f"  - [ ] **{title}** (score {r['importance']}) — draft manually")
+
+    lines = [f"- {time_label} Harvest: +{promoted} Ideas, +{staged} staged, +{l3_drafted} References drafted"]
+    if l3_lines:
+        lines.append(f"- {time_label} References:")
+        lines.extend(l3_lines)
 
     try:
         append_under_heading(daily_note, "AI Session", "\n".join(lines))
@@ -704,6 +835,10 @@ def main() -> None:
     try:
         if subcmd == "extract":
             cmd_extract(data, vault, conn, session_id)
+        elif subcmd == "queue":
+            cmd_queue(data, vault)
+        elif subcmd == "worker":
+            cmd_worker(vault, conn, session_id)
         elif subcmd == "checkpoint":
             cmd_checkpoint(vault, conn, session_id)
         elif subcmd == "flush":
