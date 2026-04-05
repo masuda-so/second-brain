@@ -1,5 +1,5 @@
 {
-    "name": "knowledge-os",
+    "name": "second-brain",
     "version": "0.2.0",
     "description": "Claude Code guardrails, session capture, and operator prompts for an Obsidian-backed Knowledge OS.",
     "author": {
