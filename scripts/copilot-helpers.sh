@@ -1,7 +1,11 @@
 #!/bin/bash
 # copilot-helpers.sh — Local authoring helpers using Copilot CLI
 #
-# Prerequisites: copilot CLI installed and authenticated
+# Prerequisites:
+#   1. copilot CLI installed and authenticated
+#      Install: https://docs.github.com/copilot/concepts/agents/about-copilot-cli
+#      Auth:    copilot auth login
+#   2. SECOND_BRAIN_VAULT_PATH set in settings.json (for vault-aware commands)
 # Usage:
 #   source scripts/copilot-helpers.sh
 #
@@ -232,9 +236,33 @@ sb-weekly-review() {
   local weekly_note="${VAULT_PATH}/Weekly/${week_str}.md"
 
   if [[ ! -f "$weekly_note" ]]; then
-    echo "Weekly note not found: $weekly_note" >&2
-    echo "Run a Claude Code session to trigger harvest.py flush, which creates the stub." >&2
-    return 1
+    # Auto-bootstrap: create stub from canonical template so first-time users don't need
+    # a prior Claude session. Mirrors the template defined in init.sh / harvest.py.
+    echo "Weekly stub not found — creating from canonical template..." >&2
+    mkdir -p "${VAULT_PATH}/Weekly"
+    cat > "$weekly_note" <<STUB
+---
+type: weekly
+week: ${week_str}
+reviewed: ${today}
+tags:
+  - planning
+  - review
+---
+## 進行中プロジェクト
+
+## 昇格候補アイデア
+
+## ブロッカー
+
+> [!tip] 週次の要約
+> 重要度の高い項目だけ Projects に昇格し、残りは保留または整理する。
+
+## 来週の重点
+
+## 関連ノート
+STUB
+    echo "Created: $weekly_note" >&2
   fi
 
   # Collect this week's Daily notes (last 7 days)
@@ -319,9 +347,31 @@ sb-monthly-review() {
   local monthly_note="${VAULT_PATH}/Monthly/${month_str}.md"
 
   if [[ ! -f "$monthly_note" ]]; then
-    echo "Monthly note not found: $monthly_note" >&2
-    echo "Run a Claude Code session to trigger harvest.py flush, which creates the stub." >&2
-    return 1
+    # Auto-bootstrap: create stub from canonical template.
+    echo "Monthly stub not found — creating from canonical template..." >&2
+    mkdir -p "${VAULT_PATH}/Monthly"
+    cat > "$monthly_note" <<STUB
+---
+type: monthly
+period: ${month_str}
+tags:
+  - monthly
+  - strategy
+---
+## 優先事項
+
+## うまくいったこと
+
+## 改善点
+
+> [!important] 月次判断
+> 実行可能な項目は Projects に移し、原則は References に残す。
+
+## 来月の焦点
+
+## 関連ノート
+STUB
+    echo "Created: $monthly_note" >&2
   fi
 
   # Step 1: collect this month's Weekly notes and compress them
