@@ -79,6 +79,14 @@ NOISE_RE = re.compile(
 
 SKIP_TITLES = {"", "untitled", "note", "notes", "misc", "todo"}
 
+# Generic / too-short entity names that should not become Reference stubs
+REFERENCE_SKIP = {
+    "main", "readme", "index", "src", "lib", "test", "tests", "init", "utils", "util",
+    "config", "app", "api", "data", "type", "types", "base", "core", "true", "false",
+    "none", "null", "undefined", "new", "old", "tmp", "temp", "todo", "fixme",
+    "error", "output", "result", "value", "item", "file", "path", "name", "text",
+}
+
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -263,6 +271,120 @@ def append_under_heading(path: pathlib.Path, heading: str, content: str) -> None
         warn(f"skipping write to {path.name}: {e}")
 
 
+def create_reference_stub(vault: pathlib.Path, entity: str) -> bool:
+    """Create a References/ stub for a recurring entity if it doesn't exist.
+    Returns True if a new file was created."""
+    slug = slugify(entity)
+    if not slug or len(entity) < 4 or slug in REFERENCE_SKIP:
+        return False
+    ref_dir = vault / "References"
+    ref_path = ref_dir / f"{slug}.md"
+    if ref_path.exists():
+        return False
+    today = datetime.now().strftime("%Y-%m-%d")
+    content = textwrap.dedent(f"""\
+        ---
+        type: reference
+        topic: {entity}
+        created: {today}
+        ---
+        ## 目的
+
+        ## 手順
+
+        > [!important] 再利用ルール
+
+        ## 関連資料
+    """)
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with _file_lock(ref_path):
+            if ref_path.exists():
+                return False
+            ref_path.write_text(content)
+        warn(f"reference stub: References/{slug}.md")
+        return True
+    except Exception as e:
+        warn(f"reference stub failed for {entity}: {e}")
+        return False
+
+
+def _maybe_create_periodic_notes(vault: pathlib.Path) -> None:
+    """Create Weekly and Monthly note stubs for the current period if they don't exist.
+    Called at SessionEnd — safe to call every session (idempotent)."""
+    today = datetime.now()
+
+    # Weekly — ISO 8601: YYYY-Www  (e.g. 2026-W14)
+    week_str = today.strftime("%G-W%V")
+    weekly_path = vault / "Weekly" / f"{week_str}.md"
+    if not weekly_path.exists():
+        reviewed = today.strftime("%Y-%m-%d")
+        body = textwrap.dedent(f"""\
+            ---
+            type: weekly
+            week: {week_str}
+            reviewed: {reviewed}
+            tags:
+              - planning
+              - review
+            ---
+            ## 進行中プロジェクト
+
+            ## 昇格候補アイデア
+
+            ## ブロッカー
+
+            > [!tip] 週次の要約
+            > 重要度の高い項目だけ Projects に昇格し、残りは保留または整理する。
+
+            ## 来週の重点
+
+            ## 関連ノート
+        """)
+        weekly_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with _file_lock(weekly_path):
+                if not weekly_path.exists():
+                    weekly_path.write_text(body)
+            warn(f"periodic: created Weekly/{week_str}.md")
+        except Exception as e:
+            warn(f"periodic: weekly note failed: {e}")
+
+    # Monthly — YYYY-MM
+    month_str = today.strftime("%Y-%m")
+    monthly_path = vault / "Monthly" / f"{month_str}.md"
+    if not monthly_path.exists():
+        body = textwrap.dedent(f"""\
+            ---
+            type: monthly
+            period: {month_str}
+            tags:
+              - monthly
+              - strategy
+            ---
+            ## 優先事項
+
+            ## うまくいったこと
+
+            ## 改善点
+
+            > [!important] 月次判断
+            > 実行可能な項目は Projects に移し、原則は References に残す。
+
+            ## 来月の焦点
+
+            ## 関連ノート
+        """)
+        monthly_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with _file_lock(monthly_path):
+                if not monthly_path.exists():
+                    monthly_path.write_text(body)
+            warn(f"periodic: created Monthly/{month_str}.md")
+        except Exception as e:
+            warn(f"periodic: monthly note failed: {e}")
+
+
 def create_note(vault: pathlib.Path, target_dir: str, title: str, content: str,
                 tags: list | None = None, source: str = "") -> pathlib.Path:
     today = datetime.now().strftime("%Y-%m-%d")
@@ -365,13 +487,14 @@ def _choose_target(score: int, source: str) -> str:
 
 # ── Promotion sweeps ─────────────────────────────────────────────────────────
 
-def promote_l1(vault: pathlib.Path, conn: sqlite3.Connection) -> int:
+def promote_l1(vault: pathlib.Path, conn: sqlite3.Connection,
+               threshold: int = L1_THRESHOLD) -> int:
     """Auto-promote to Ideas/ immediately."""
     rows = conn.execute("""
         SELECT * FROM candidates
         WHERE status='pending' AND importance >= ? AND target_dir='Ideas'
         ORDER BY importance DESC LIMIT 20
-    """, (L1_THRESHOLD,)).fetchall()
+    """, (threshold,)).fetchall()
     count = 0
     for row in rows:
         try:
@@ -429,12 +552,13 @@ def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
     prompt = (event.get("prompt") or event.get("message") or
               event.get("user_prompt") or "")
     if prompt:
-        conn.execute("""
-            INSERT INTO prompt_counter (session_id, count) VALUES (?, 1)
-            ON CONFLICT(session_id) DO UPDATE SET count = count + 1
-        """, (session_id,))
-        conn.commit()
         if not NOISE_RE.match(prompt.strip()):
+            # Count only substantive prompts (after noise filter)
+            conn.execute("""
+                INSERT INTO prompt_counter (session_id, count) VALUES (?, 1)
+                ON CONFLICT(session_id) DO UPDATE SET count = count + 1
+            """, (session_id,))
+            conn.commit()
             pieces.append(("prompt", prompt))
 
     # Tool events
@@ -471,29 +595,53 @@ def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
     promote_l1(vault, conn)
 
 
-def cmd_checkpoint(vault: pathlib.Path, conn: sqlite3.Connection,
-                   session_id: str) -> None:
-    """Per-response (Stop hook): L1 always; L2 only every CHECKPOINT_EVERY prompts."""
-    n1 = promote_l1(vault, conn)
-
+def _get_prompt_count(conn: sqlite3.Connection, session_id: str) -> int:
     row = conn.execute(
         "SELECT count FROM prompt_counter WHERE session_id=?", (session_id,)
     ).fetchone()
-    prompt_count = row["count"] if row else 0
+    return row["count"] if row else 0
+
+
+def _effective_l1_threshold(prompt_count: int) -> int:
+    """C: Lower the L1 threshold for short sessions (≤5 meaningful prompts)."""
+    return 2 if prompt_count <= 5 else L1_THRESHOLD
+
+
+def cmd_checkpoint(vault: pathlib.Path, conn: sqlite3.Connection,
+                   session_id: str) -> None:
+    """Per-response (Stop hook): L1 always; L2 only every CHECKPOINT_EVERY prompts."""
+    prompt_count = _get_prompt_count(conn, session_id)
+    threshold = _effective_l1_threshold(prompt_count)
+    n1 = promote_l1(vault, conn, threshold=threshold)
 
     n2 = 0
     if prompt_count > 0 and prompt_count % CHECKPOINT_EVERY == 0:
         n2 = promote_l2(vault, conn)
 
     if n1 or n2:
-        warn(f"checkpoint (prompt #{prompt_count}): +{n1} Ideas, +{n2} staged")
+        warn(f"checkpoint (prompt #{prompt_count}, L1≥{threshold}): +{n1} Ideas, +{n2} staged")
 
 
 def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
               session_id: str) -> None:
-    """SessionEnd: final sweep + L3 checklist in Daily note."""
-    n1 = promote_l1(vault, conn)
+    """SessionEnd: final sweep + L3 checklist + periodic notes + Reference stubs."""
+    prompt_count = _get_prompt_count(conn, session_id)
+    threshold = _effective_l1_threshold(prompt_count)
+    n1 = promote_l1(vault, conn, threshold=threshold)
     n2 = promote_l2(vault, conn)
+
+    # A: Weekly / Monthly stubs for current period (idempotent)
+    _maybe_create_periodic_notes(vault)
+
+    # B: Reference stubs for entities with 5+ cumulative appearances
+    ref_rows = conn.execute("""
+        SELECT name FROM entities
+        WHERE appearances >= 5
+        ORDER BY appearances DESC LIMIT 20
+    """).fetchall()
+    ref_count = sum(1 for r in ref_rows if create_reference_stub(vault, r["name"]))
+    if ref_count:
+        warn(f"flush: created {ref_count} References/ stubs")
 
     today = datetime.now().strftime("%Y-%m-%d")
     time_label = datetime.now().strftime("%H:%M")
@@ -529,7 +677,8 @@ def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
     except Exception as e:
         warn(f"flush: daily note update failed: {e}")
 
-    warn(f"flush: promoted={promoted} staged={staged} l3_pending={len(l3_rows)}")
+    warn(f"flush: promoted={promoted} staged={staged} l3_pending={len(l3_rows)} "
+         f"refs={ref_count} prompts={prompt_count} L1≥{threshold}")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
