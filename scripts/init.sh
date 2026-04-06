@@ -131,7 +131,80 @@ fi
 
 echo ""
 
-# ── 3. Hooks config ────────────────────────────────────────────────────────────
+# ── 3. Plugin hooks install ────────────────────────────────────────────────────
+# Register hooks/hooks.json into .claude/settings.local.json so Claude Code
+# actually fires them. Also sets CLAUDE_PLUGIN_ROOT in env.
+# Idempotent: existing identical commands are not duplicated.
+
+echo "-- Plugin hooks install"
+
+HOOKS_FILE="$REPO_ROOT/hooks/hooks.json"
+if [[ ! -f "$HOOKS_FILE" ]]; then
+  fail "hooks/hooks.json not found — cannot install hooks"
+else
+  install_out=$(python3 - "$LOCAL_SETTINGS" "$HOOKS_FILE" "$REPO_ROOT" <<'PY'
+import json, sys, pathlib
+
+settings_path = pathlib.Path(sys.argv[1])
+hooks_path    = pathlib.Path(sys.argv[2])
+plugin_root   = sys.argv[3]
+
+try:
+    settings = json.loads(settings_path.read_text()) if settings_path.exists() else {}
+except Exception:
+    settings = {}
+
+settings.setdefault("env", {})["CLAUDE_PLUGIN_ROOT"] = plugin_root
+
+raw = hooks_path.read_text().replace("${CLAUDE_PLUGIN_ROOT}", plugin_root)
+plugin_hooks = json.loads(raw).get("hooks", {})
+
+dest_hooks = settings.setdefault("hooks", {})
+added = 0
+skipped = 0
+
+for event, matchers in plugin_hooks.items():
+    dest_matchers = dest_hooks.setdefault(event, [])
+    for matcher_block in matchers:
+        for new_hook in matcher_block.get("hooks", []):
+            cmd = new_hook.get("command", "")
+            already = any(
+                h.get("command") == cmd
+                for m in dest_matchers
+                for h in m.get("hooks", [])
+            )
+            if already:
+                skipped += 1
+                continue
+            matcher_val = matcher_block.get("matcher")
+            target = next(
+                (m for m in dest_matchers if m.get("matcher") == matcher_val),
+                None,
+            )
+            if target is None:
+                target = {}
+                if matcher_val is not None:
+                    target["matcher"] = matcher_val
+                target["hooks"] = []
+                dest_matchers.append(target)
+            target["hooks"].append(new_hook)
+            added += 1
+
+settings_path.parent.mkdir(parents=True, exist_ok=True)
+settings_path.write_text(json.dumps(settings, indent=4, ensure_ascii=False) + "\n")
+print(f"added={added} skipped={skipped}")
+PY
+  )
+  if [[ $? -eq 0 ]]; then
+    ok "hooks installed: $install_out (CLAUDE_PLUGIN_ROOT=$REPO_ROOT)"
+  else
+    fail "hook install failed"
+  fi
+fi
+
+echo ""
+
+# ── 4. Hooks config validation ─────────────────────────────────────────────────
 
 echo "-- Hooks"
 
