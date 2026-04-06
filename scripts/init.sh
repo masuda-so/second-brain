@@ -99,15 +99,14 @@ except Exception:
 
 CURRENT_VAULT=$(_read_vault_path_from_settings "$LOCAL_SETTINGS")
 
-if [[ -z "$CURRENT_VAULT" || "$CURRENT_VAULT" == "$PLACEHOLDER" ]]; then
-  if [[ -n "$VAULT_PATH_ARG" ]]; then
-    _set_vault_path_in_settings "$LOCAL_SETTINGS" "$VAULT_PATH_ARG"
-    ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
-  else
-    fail "SECOND_BRAIN_VAULT_PATH not configured — run: second-brain:init /your/vault/path"
-  fi
-else
+if [[ -n "$CURRENT_VAULT" && "$CURRENT_VAULT" != "$PLACEHOLDER" && -d "$CURRENT_VAULT" ]]; then
+  # Valid path already configured — do not overwrite, even if an argument was passed
   ok "SECOND_BRAIN_VAULT_PATH = $CURRENT_VAULT"
+elif [[ -n "$VAULT_PATH_ARG" ]]; then
+  _set_vault_path_in_settings "$LOCAL_SETTINGS" "$VAULT_PATH_ARG"
+  ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
+else
+  fail "SECOND_BRAIN_VAULT_PATH not configured — run: second-brain:init /your/vault/path"
 fi
 
 echo ""

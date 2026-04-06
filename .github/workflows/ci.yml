@@ -65,6 +65,9 @@ jobs:
             mkdir -p "$TMPVAULT/$d"
           done
           mkdir -p "$TMPVAULT/Meta/AI Sessions"
+          # In CI: .claude/settings.local.json does not exist before this test,
+          # so init.sh writes the temp vault path there safely.
+          # Locally: init.sh guards against overwriting a valid existing path.
           bash scripts/init.sh "$TMPVAULT"
           STATUS=$?
           rm -rf "$TMPVAULT"
