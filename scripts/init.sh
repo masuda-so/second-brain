@@ -56,64 +56,58 @@ fi
 
 echo ""
 
-# ── 2. settings.json — create from example if missing ─────────────────────────
+# ── 2. .claude/settings.local.json — canonical vault path config ──────────────
+#
+# Canonical location for SECOND_BRAIN_VAULT_PATH is .claude/settings.local.json
+# (machine-specific / user-local, never committed).
+# repo-root settings.json is kept as a legacy fallback for now.
 
-echo "-- settings.json"
+echo "-- .claude/settings.local.json"
 
-SETTINGS_FILE="$REPO_ROOT/settings.json"
-SETTINGS_EXAMPLE="$REPO_ROOT/settings.json.example"
+LOCAL_SETTINGS="$REPO_ROOT/.claude/settings.local.json"
 PLACEHOLDER="/path/to/your/obsidian/vault"
 
-if [[ ! -f "$SETTINGS_FILE" ]]; then
-  if [[ -f "$SETTINGS_EXAMPLE" ]]; then
-    cp "$SETTINGS_EXAMPLE" "$SETTINGS_FILE"
-    ok "created settings.json from example"
-    if [[ -n "$VAULT_PATH_ARG" ]]; then
-      python3 - "$SETTINGS_FILE" "$VAULT_PATH_ARG" <<'PY'
-import json, sys
+_set_vault_path_in_settings() {
+  local path="$1" vault="$2"
+  python3 - "$path" "$vault" <<'PY'
+import json, sys, pathlib
 path, vault = sys.argv[1], sys.argv[2]
-d = json.load(open(path))
+p = pathlib.Path(path)
+try:
+    d = json.loads(p.read_text()) if p.exists() else {}
+except Exception:
+    d = {}
 d.setdefault("env", {})["SECOND_BRAIN_VAULT_PATH"] = vault
+p.parent.mkdir(parents=True, exist_ok=True)
 with open(path, "w") as f:
     json.dump(d, f, indent=4, ensure_ascii=False)
     f.write("\n")
 PY
-      ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
-    else
-      warn "Edit settings.json and set SECOND_BRAIN_VAULT_PATH to your vault path"
-    fi
-  else
-    fail "settings.json.example not found — cannot create settings.json"
-  fi
-else
-  # Verify SECOND_BRAIN_VAULT_PATH is set and not a placeholder
-  CURRENT_VAULT=$(python3 -c "
-import json
+}
+
+_read_vault_path_from_settings() {
+  local path="$1"
+  python3 -c "
+import json, sys
 try:
-    d = json.load(open('$SETTINGS_FILE'))
+    d = json.load(open('$path'))
     print(d.get('env', {}).get('SECOND_BRAIN_VAULT_PATH', ''))
 except Exception:
     pass
-" 2>/dev/null || true)
+" 2>/dev/null || true
+}
 
-  if [[ -z "$CURRENT_VAULT" || "$CURRENT_VAULT" == "$PLACEHOLDER" ]]; then
-    if [[ -n "$VAULT_PATH_ARG" ]]; then
-      python3 - "$SETTINGS_FILE" "$VAULT_PATH_ARG" <<'PY'
-import json, sys
-path, vault = sys.argv[1], sys.argv[2]
-d = json.load(open(path))
-d.setdefault("env", {})["SECOND_BRAIN_VAULT_PATH"] = vault
-with open(path, "w") as f:
-    json.dump(d, f, indent=4, ensure_ascii=False)
-    f.write("\n")
-PY
-      ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
-    else
-      fail "SECOND_BRAIN_VAULT_PATH not configured — run: second-brain:init /your/vault/path"
-    fi
+CURRENT_VAULT=$(_read_vault_path_from_settings "$LOCAL_SETTINGS")
+
+if [[ -z "$CURRENT_VAULT" || "$CURRENT_VAULT" == "$PLACEHOLDER" ]]; then
+  if [[ -n "$VAULT_PATH_ARG" ]]; then
+    _set_vault_path_in_settings "$LOCAL_SETTINGS" "$VAULT_PATH_ARG"
+    ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
   else
-    ok "SECOND_BRAIN_VAULT_PATH = $CURRENT_VAULT"
+    fail "SECOND_BRAIN_VAULT_PATH not configured — run: second-brain:init /your/vault/path"
   fi
+else
+  ok "SECOND_BRAIN_VAULT_PATH = $CURRENT_VAULT"
 fi
 
 echo ""
@@ -160,18 +154,15 @@ echo ""
 
 echo "-- Vault"
 
-# Resolve vault path: argument → env var → settings.json → CLAUDE.md
+# Resolve vault path: argument → env var → .claude/settings.local.json → settings.json (legacy) → CLAUDE.md
 VAULT_PATH="${VAULT_PATH_ARG:-${SECOND_BRAIN_VAULT_PATH:-}}"
 
+if [[ -z "$VAULT_PATH" ]] && [[ -f "$LOCAL_SETTINGS" ]]; then
+  VAULT_PATH=$(_read_vault_path_from_settings "$LOCAL_SETTINGS")
+fi
+
 if [[ -z "$VAULT_PATH" ]] && [[ -f "$REPO_ROOT/settings.json" ]]; then
-  VAULT_PATH=$(python3 -c "
-import json, sys
-try:
-    d = json.load(open('$REPO_ROOT/settings.json'))
-    print(d.get('env', {}).get('SECOND_BRAIN_VAULT_PATH', ''))
-except Exception:
-    pass
-" 2>/dev/null || true)
+  VAULT_PATH=$(_read_vault_path_from_settings "$REPO_ROOT/settings.json")
 fi
 
 if [[ -z "$VAULT_PATH" ]] && [[ -f "$REPO_ROOT/CLAUDE.md" ]]; then
@@ -179,7 +170,7 @@ if [[ -z "$VAULT_PATH" ]] && [[ -f "$REPO_ROOT/CLAUDE.md" ]]; then
 fi
 
 if [[ -z "$VAULT_PATH" ]]; then
-  fail "vault path not found — set SECOND_BRAIN_VAULT_PATH in settings.json"
+  fail "vault path not found — set SECOND_BRAIN_VAULT_PATH in .claude/settings.local.json"
   echo ""
   echo "=== Result: $errors error(s) ==="
   exit 1

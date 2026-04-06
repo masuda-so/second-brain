@@ -153,13 +153,26 @@ def _init_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def get_session_id() -> str:
+def parse_event(data: str) -> dict:
+    """Tolerant JSON parse of hook stdin. Returns {} on failure."""
+    if not data.strip():
+        return {}
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        return {}
+
+
+def extract_session_id(event: dict) -> str:
+    """Extract session_id from parsed hook event, with env var fallback."""
     raw = (
-        os.environ.get("CLAUDE_SESSION_ID")
+        event.get("session_id")
+        or event.get("sessionId")
+        or os.environ.get("CLAUDE_SESSION_ID")
         or os.environ.get("CLAUDE_CODE_SESSION_ID")
         or "unknown-session"
     )
-    return re.sub(r"[^A-Za-z0-9._-]", "-", raw).strip("-") or "unknown-session"
+    return re.sub(r"[^A-Za-z0-9._-]", "-", str(raw)).strip("-") or "unknown-session"
 
 
 def score_content(text: str) -> int:
@@ -496,9 +509,10 @@ def create_reference_from_candidate(vault: pathlib.Path,
 
 def _drain_queue(vault: pathlib.Path, conn: sqlite3.Connection,
                  session_id: str) -> int:
-    """Drain harvest-queue.jsonl and process each event via cmd_extract.
+    """Drain session-scoped queue file and process each event via cmd_extract.
     Returns number of events processed."""
-    queue_file = vault / "Meta" / ".cache" / "harvest-queue.jsonl"
+    queue_dir = vault / "Meta" / ".cache" / "harvest-queue"
+    queue_file = queue_dir / f"{session_id}.jsonl"
     if not queue_file.exists():
         return 0
     try:
@@ -514,13 +528,13 @@ def _drain_queue(vault: pathlib.Path, conn: sqlite3.Connection,
         try:
             entry = json.loads(line)
             data = entry.get("data", "")
+            entry_session_id = entry.get("session_id", session_id)
             if data:
-                cmd_extract(data, vault, conn, session_id)
+                cmd_extract(data, vault, conn, entry_session_id)
                 processed += 1
         except Exception as e:
             warn(f"queue: error processing event: {e}")
-    if processed:
-        warn(f"queue: drained {processed} events")
+    warn(f"queue: drained {processed} events for session={session_id[:16]}")
     return processed
 
 
@@ -677,10 +691,16 @@ def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
         if len(tool_resp) > 60:
             pieces.append(("web", tool_resp[:MAX_CONTENT_LEN]))
 
+    total_entities = 0
     for source_label, text in pieces:
         entities = extract_entities(text)
         bonus = sum(upsert_entity(conn, e) for e in entities)
+        total_entities += len(entities)
         enqueue_candidate(conn, session_id, source_label, text, bonus)
+
+    if pieces:
+        warn(f"extract: pieces={len(pieces)} entities={total_entities} "
+             f"source={pieces[0][0]} session={session_id[:16]}")
 
     # L1 always runs after extract
     promote_l1(vault, conn)
@@ -713,17 +733,25 @@ def cmd_checkpoint(vault: pathlib.Path, conn: sqlite3.Connection,
         warn(f"checkpoint (prompt #{prompt_count}, L1≥{threshold}): +{n1} Ideas, +{n2} staged")
 
 
-def cmd_queue(data: str, vault: pathlib.Path) -> None:
-    """Append raw event data to the harvest queue file (fast, non-blocking).
+def cmd_queue(data: str, vault: pathlib.Path, session_id: str, event: dict) -> None:
+    """Append event to session-scoped queue file (fast, non-blocking).
     Called by hooks instead of extract — actual processing happens at worker/flush."""
     if not data.strip():
         return
-    queue_file = vault / "Meta" / ".cache" / "harvest-queue.jsonl"
-    queue_file.parent.mkdir(parents=True, exist_ok=True)
+    queue_dir = vault / "Meta" / ".cache" / "harvest-queue"
+    queue_dir.mkdir(parents=True, exist_ok=True)
+    queue_file = queue_dir / f"{session_id}.jsonl"
     now = datetime.now().isoformat(timespec="seconds")
+    hook_name = event.get("hook_event_name", event.get("hookEventName", ""))
     try:
         with open(queue_file, "a") as f:
-            f.write(json.dumps({"queued_at": now, "data": data}) + "\n")
+            f.write(json.dumps({
+                "queued_at": now,
+                "session_id": session_id,
+                "hook_event_name": hook_name,
+                "data": data,
+            }) + "\n")
+        warn(f"queue: wrote event session={session_id[:16]} hook={hook_name}")
     except Exception as e:
         warn(f"queue: write failed: {e}")
 
@@ -818,10 +846,20 @@ def main() -> None:
     subcmd = sys.argv[1] if len(sys.argv) > 1 else "extract"
     data = sys.stdin.read() if not sys.stdin.isatty() else ""
 
+    # Parse event once — session_id is extracted here and passed to all subcommands.
+    # cmd_queue receives the parsed event too so it can embed session_id in each entry.
+    event = parse_event(data)
+    session_id = extract_session_id(event)
+
     try:
         vault = get_vault_path()
     except Exception as e:
         warn(f"vault not found: {e}")
+        sys.exit(0)
+
+    # cmd_queue is fast-path: no DB needed, write and exit
+    if subcmd == "queue":
+        cmd_queue(data, vault, session_id, event)
         sys.exit(0)
 
     try:
@@ -830,13 +868,9 @@ def main() -> None:
         warn(f"db init failed: {e}")
         sys.exit(0)
 
-    session_id = get_session_id()
-
     try:
         if subcmd == "extract":
             cmd_extract(data, vault, conn, session_id)
-        elif subcmd == "queue":
-            cmd_queue(data, vault)
         elif subcmd == "worker":
             cmd_worker(vault, conn, session_id)
         elif subcmd == "checkpoint":
