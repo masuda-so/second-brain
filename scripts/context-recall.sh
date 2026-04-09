@@ -164,25 +164,48 @@ for f in top:
 
 context_block = "\n".join(lines)
 
-# Append to session note
+# Append to session note (with advisory flock — same pattern as session-memory.sh)
 if session_note.exists():
+    import fcntl, time as _time
+    lock_path = session_note.parent / f".{session_note.name}.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    lf = open(lock_path, "w")
+    acquired = False
     try:
-        text = session_note.read_text()
-        marker = "## Recalled Context"
-        entry = f"\n### {time_label} Recalled Context\n\n{context_block}\n"
-        if marker in text:
-            # Insert before next ## heading after marker
-            idx = text.index(marker) + len(marker)
-            next_h2 = text.find("\n## ", idx)
-            if next_h2 == -1:
-                text = text + entry
-            else:
-                text = text[:next_h2] + entry + text[next_h2:]
-        else:
-            text = text.rstrip("\n") + f"\n\n{marker}{entry}"
-        session_note.write_text(text)
-    except Exception:
-        pass
+        try:
+            fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquired = True
+        except OSError:
+            for _ in range(100):
+                _time.sleep(0.05)
+                try:
+                    fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    acquired = True
+                    break
+                except OSError:
+                    pass
+        if acquired:
+            try:
+                text = session_note.read_text()
+                marker = "## Recalled Context"
+                entry = f"\n### {time_label} Recalled Context\n\n{context_block}\n"
+                if marker in text:
+                    # Insert before next ## heading after marker
+                    idx = text.index(marker) + len(marker)
+                    next_h2 = text.find("\n## ", idx)
+                    if next_h2 == -1:
+                        text = text + entry
+                    else:
+                        text = text[:next_h2] + entry + text[next_h2:]
+                else:
+                    text = text.rstrip("\n") + f"\n\n{marker}{entry}"
+                session_note.write_text(text)
+            except Exception:
+                pass
+    finally:
+        if acquired:
+            fcntl.flock(lf, fcntl.LOCK_UN)
+        lf.close()
 
 # Emit additionalContext — hookEventName goes inside hookSpecificOutput
 inject = f"Relevant vault context for this prompt:\n{context_block}"

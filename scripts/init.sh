@@ -17,6 +17,8 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+CLAUDE_SETTINGS_DIR="$REPO_ROOT/.claude"
+CLAUDE_SETTINGS_LOCAL="$CLAUDE_SETTINGS_DIR/settings.local.json"
 
 # Optional: vault path override from first argument
 VAULT_PATH_ARG="${1:-}"
@@ -303,6 +305,7 @@ sync_template() {
 
 sync_template "daily.md" <<'TMPL'
 ---
+title: {{date:YYYY-MM-DD}}
 type: daily
 date: {{date:YYYY-MM-DD}}
 tags:
@@ -325,6 +328,7 @@ TMPL
 
 sync_template "weekly.md" <<'TMPL'
 ---
+title: {{date:YYYY-[W]WW}}
 type: weekly
 week: {{date:YYYY-[W]WW}}
 reviewed: {{date:YYYY-MM-DD}}
@@ -348,6 +352,7 @@ TMPL
 
 sync_template "monthly.md" <<'TMPL'
 ---
+title: {{date:YYYY-MM}}
 type: monthly
 period: {{date:YYYY-MM}}
 tags:
@@ -360,7 +365,7 @@ tags:
 
 ## 改善点
 
-> [!important] 月次判断
+> [!warning] 月次判断
 > 実行可能な項目は Projects に移し、原則は References に残す。
 
 ## 来月の焦点
@@ -370,6 +375,7 @@ TMPL
 
 sync_template "project.md" <<'TMPL'
 ---
+title:
 type: project
 status: active
 review: {{date:YYYY-MM-DD}}
@@ -388,6 +394,7 @@ TMPL
 
 sync_template "idea.md" <<'TMPL'
 ---
+title:
 type: idea
 status: incubating
 created: {{date:YYYY-MM-DD}}
@@ -406,6 +413,7 @@ TMPL
 
 sync_template "reference.md" <<'TMPL'
 ---
+title:
 type: reference
 topic:
 ---
@@ -413,13 +421,14 @@ topic:
 
 ## 手順
 
-> [!important] 再利用ルール
+> [!warning] 再利用ルール
 
 ## 関連資料
 TMPL
 
 sync_template "clipping.md" <<'TMPL'
 ---
+title:
 type: clipping
 source:
 captured: {{date:YYYY-MM-DD}}

@@ -22,6 +22,7 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 5. Temporary reasoning belongs in working memory or scratch notes, not in permanent knowledge artifacts unless it remains useful after the session.
 6. Hooks must stay deterministic, fast, and easy to audit.
 7. Protect secrets, system files, and repository integrity before convenience.
+8. Maintain close coordination with Codex and Gemini at all times. Before major decisions, implementation steps, or structural changes, consult the other agents via tmux-bridge. Surface disagreements to the user rather than resolving silently.
 
 ## Repository Roles
 
