@@ -73,7 +73,12 @@ BASH_SIGNAL_RE = re.compile(
 )
 
 NOISE_RE = re.compile(
-    r"^(ok|okay|yes|no|はい|いいえ|わかりました|了解|ありがとう|thanks?|sure|got\s*it)\W*$",
+    r"^(ok|okay|yes|no|はい|いいえ|わかりました|了解|ありがとう|thanks?|sure|got\s*it)\W*$"
+    r"|必ず.{0,20}(enter|送り|押し|実行|confirm)"  # tmux操作指示
+    r"|tmux.bridge\s+(read|type|keys|send)"          # tmux-bridge操作コマンド
+    r"|\[tmux-bridge\s+from:"                        # tmux-bridge relay header
+    r"|【claude\s*[→→]\s*(codex|gemini)】"           # エージェント間通信ヘッダー
+    r"|【(codex|gemini)\s*[→→]\s*claude】",
     re.IGNORECASE,
 )
 
