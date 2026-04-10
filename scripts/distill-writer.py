@@ -113,6 +113,44 @@ def draft_filename(date: str, title: str) -> str:
     return f"{DRAFT_PREFIX}-{date}-{slug}.md"
 
 
+ERROR_RE = re.compile(
+    r"エラー|error|exception|fail(?:ed|ure)?|バグ|bug|"
+    r"fixed|resolved|(?:バグ|エラー)\s*修正",
+    re.I,
+)
+CONFIG_RE = re.compile(r"設定|config|rule|ルール|policy|フック設定|hook\s*config", re.I)
+PROC_RE = re.compile(r"手順|操作|実行|run|deploy|install|setup", re.I)
+
+
+def generate_questions(signal: str) -> str:
+    normalized = signal.strip()
+    if ERROR_RE.search(normalized):
+        questions = [
+            "どの条件でこのエラーが発生するか？",
+            "回避策は？",
+            "再発を防ぐための確認ポイントは？",
+        ]
+    elif PROC_RE.search(normalized):
+        questions = [
+            "この手順の前提条件は何か？",
+            "失敗するケースや注意点は？",
+            "完了をどう確認するか？",
+        ]
+    elif CONFIG_RE.search(normalized):
+        questions = [
+            "この設定はどこで有効になるか？",
+            "例外ケースは？",
+            "変更時に影響を受ける箇所は？",
+        ]
+    else:
+        questions = [
+            "この知識はいつ役立つか？",
+            "関連するノートは？",
+        ]
+
+    return "\n".join(f"- {question}" for question in questions)
+
+
 # ── Template builders ─────────────────────────────────────────────────────────
 
 
@@ -127,6 +165,7 @@ def build_reference_draft(
 ) -> str:
     dest_link = f"[[{destination.removesuffix('.md')}]]" if destination else ""
     related = f"\n- {dest_link}" if dest_link and action == "append" else ""
+    questions = generate_questions(signal)
     return f"""\
 ---
 title: {title}
@@ -146,11 +185,12 @@ tags: []
 
 ## 手順
 
-<!-- /distill で補完 -->
+<!-- AI生成の論点ヒント（/distill で編集・確定してください） -->
+{questions}
 
 > [!tip] 再利用ルール
 
-<!-- /distill で補完 -->
+<!-- 上記の論点を踏まえて再利用条件を記述してください -->
 
 ## 関連資料
 {related}
