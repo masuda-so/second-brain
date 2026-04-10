@@ -23,11 +23,16 @@ import json
 import os
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 from datetime import datetime
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+AGENT_FILE = REPO_ROOT / "agents" / "note-body-generator.md"
+CLAUDE_TIMEOUT = 30  # seconds
 
 PROMOTIONS_SUBDIR = "Meta/Promotions"
 DRAFT_PREFIX = "draft"
@@ -108,6 +113,41 @@ def infer_topic(signal: str, destination: str) -> str:
     return "general"
 
 
+def _strip_frontmatter(text: str) -> str:
+    """Remove YAML frontmatter block from agent file content."""
+    if text.startswith("---"):
+        end = text.find("---", 3)
+        if end != -1:
+            return text[end + 3:].lstrip("\n")
+    return text
+
+
+def generate_body_via_claude(signal: str) -> str | None:
+    """Call claude -p to generate note body. Returns body text or None on failure."""
+    if not shutil.which("claude"):
+        return None
+    if not AGENT_FILE.exists():
+        return None
+
+    system_prompt = _strip_frontmatter(AGENT_FILE.read_text(encoding="utf-8"))
+    prompt = f"以下のシグナルからノート本文を生成してください:\n\n{signal[:2000]}"
+
+    try:
+        result = subprocess.run(
+            ["claude", "-p", "--system-prompt", system_prompt, prompt],
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT,
+        )
+        if result.returncode == 0:
+            body = result.stdout.strip()
+            if body and "## 目的" in body:
+                return body
+    except (subprocess.TimeoutExpired, OSError, ValueError):
+        pass
+    return None
+
+
 def draft_filename(date: str, title: str) -> str:
     slug = slugify(title, max_len=50)
     return f"{DRAFT_PREFIX}-{date}-{slug}.md"
@@ -165,7 +205,19 @@ def build_reference_draft(
 ) -> str:
     dest_link = f"[[{destination.removesuffix('.md')}]]" if destination else ""
     related = f"\n- {dest_link}" if dest_link and action == "append" else ""
-    questions = generate_questions(signal)
+
+    ai_body = generate_body_via_claude(signal)
+    if ai_body:
+        body_section = ai_body
+    else:
+        questions = generate_questions(signal)
+        body_section = (
+            f"## 目的\n\n{signal}\n\n## 手順\n\n"
+            f"<!-- AI生成の論点ヒント（/distill で編集・確定してください） -->\n"
+            f"{questions}\n\n> [!tip] 再利用ルール\n\n"
+            f"<!-- 上記の論点を踏まえて再利用条件を記述してください -->"
+        )
+
     return f"""\
 ---
 title: {title}
@@ -179,18 +231,7 @@ promotion_target: {destination}
 promotion_action: {action}
 tags: []
 ---
-## 目的
-
-{signal}
-
-## 手順
-
-<!-- AI生成の論点ヒント（/distill で編集・確定してください） -->
-{questions}
-
-> [!tip] 再利用ルール
-
-<!-- 上記の論点を踏まえて再利用条件を記述してください -->
+{body_section}
 
 ## 関連資料
 {related}
