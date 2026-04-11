@@ -1,7 +1,34 @@
+# Python
 scripts/__pycache__/
+**/__pycache__/
 *.pyc
+*.pyo
+
+# Claude Code local config (machine-specific)
 .claude/
 settings.json
+
+# Temp / debug artifacts — never commit these
 *.txt
-.DS_Store
+*.log
 test_*.json
+debug_*.json
+*_test.json
+*_debug.*
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Vault directories — belong in Obsidian vault, not this repo
+Meta/
+Daily/
+Weekly/
+Monthly/
+Ideas/
+References/
+Projects/
+Clippings/
+Bases/
+Canvases/
+Sandbox/
