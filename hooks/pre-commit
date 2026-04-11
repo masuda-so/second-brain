@@ -1,0 +1,44 @@
+#!/bin/bash
+# hooks/pre-commit — tracked copy of the pre-commit guard.
+# Install: ln -sf ../../hooks/pre-commit .git/hooks/pre-commit
+#   (or run scripts/init.sh which does this automatically)
+#
+# Blocks Added/Copied/Renamed files matching forbidden patterns.
+# Deletions and modifications are always allowed.
+
+FORBIDDEN_PATTERNS=(
+  "\.txt$"
+  "\.log$"
+  "(^|/)test_.*\.json$"
+  "(^|/)debug_.*"
+  "^Meta/"
+  "^Daily/"
+  "^Weekly/"
+  "^Monthly/"
+  "^Ideas/"
+  "^References/"
+  "^Projects/"
+  "^Clippings/"
+  "^Bases/"
+  "^Canvases/"
+  "^Sandbox/"
+)
+
+errors=()
+while IFS= read -r file; do
+  for pat in "${FORBIDDEN_PATTERNS[@]}"; do
+    if echo "$file" | grep -qE "$pat"; then
+      errors+=("  $file  (matches: $pat)")
+      break
+    fi
+  done
+done < <(git diff --cached --name-only --diff-filter=ACR)
+
+if [[ ${#errors[@]} -gt 0 ]]; then
+  echo "second-brain pre-commit: forbidden files staged:" >&2
+  for e in "${errors[@]}"; do echo "$e" >&2; done
+  echo "" >&2
+  echo "These files must not be committed to this repository." >&2
+  echo "Remove them with: git rm --cached <file>" >&2
+  exit 1
+fi

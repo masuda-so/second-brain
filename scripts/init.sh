@@ -133,6 +133,29 @@ fi
 
 echo ""
 
+# ── 3b. Pre-commit hook install ────────────────────────────────────────────────
+# Install a symlink from .git/hooks/pre-commit → hooks/pre-commit (tracked).
+# This ensures the guard survives across clones when init.sh is re-run.
+
+echo "-- Pre-commit hook"
+
+HOOK_SRC="$REPO_ROOT/hooks/pre-commit"
+HOOK_DST="$REPO_ROOT/.git/hooks/pre-commit"
+
+if [[ ! -f "$HOOK_SRC" ]]; then
+  warn "hooks/pre-commit not found — skipping"
+else
+  chmod +x "$HOOK_SRC"
+  if [[ -L "$HOOK_DST" && "$(readlink "$HOOK_DST")" == "../../hooks/pre-commit" ]]; then
+    ok "pre-commit symlink already installed"
+  else
+    ln -sf "../../hooks/pre-commit" "$HOOK_DST"
+    ok "installed .git/hooks/pre-commit → hooks/pre-commit"
+  fi
+fi
+
+echo ""
+
 # ── 3. Plugin hooks install ────────────────────────────────────────────────────
 # Register hooks/hooks.json into .claude/settings.local.json so Claude Code
 # actually fires them. Also sets CLAUDE_PLUGIN_ROOT in env.
