@@ -1,8 +1,0 @@
-{
-  "candidates": [
-    {"signal": "バグ修正", "destination": "References/bugfix.md", "action": "create"},
-    {"signal": "ドキュメントの誤字を修正", "destination": "References/typo.md", "action": "create"},
-    {"signal": "React hook state bug", "destination": "References/react.md", "action": "create"},
-    {"signal": "手順書のルールを修正", "destination": "References/manual.md", "action": "create"}
-  ]
-}
