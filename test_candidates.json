@@ -1,0 +1,9 @@
+{
+  "candidates": [
+    {"signal": "Failed to run hook command", "destination": "References/hook_error.md", "action": "create"},
+    {"signal": "VS Code の settings.json に新しいルールを追加した", "destination": "References/vscode_settings.md", "action": "create"},
+    {"signal": "サーバーのデプロイ手順を修正", "destination": "References/deploy_guide.md", "action": "create"},
+    {"signal": "React の新しいフックについてのメモ", "destination": "References/react_hooks.md", "action": "create"},
+    {"signal": "単なる挨拶や感想（無関係なログ）", "destination": "References/misc.md", "action": "create"}
+  ]
+}
