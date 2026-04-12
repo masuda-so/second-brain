@@ -86,6 +86,35 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 | `Meta/AI Sessions/` | Live session capture (prompts, tool events, closeout). One file per session. Not meant for long-term curation — archive or delete after distillation. |
 | `Meta/.cache/` | SQLite sidecar (`memory.db`). Ephemeral — safe to delete; will be recreated. |
 
+## LLM Wiki 運用モデル
+
+この vault は、永続的に蓄積される「コンパイル済み wiki」パターンを実装する。質問のたびに raw source から知識を再発見し直すのではなく、耐久性のある source を一度 vault に統合し、統合済みの synthesis を更新し続け、以後の質問ではまずコンパイル済みノートを読む。
+
+| LLM Wiki レイヤー | second-brain 上の場所 | ルール |
+|-------------------|------------------------|--------|
+| Raw sources | `Clippings/`, imported files, `Meta/AI Sessions/` | provenance を保存する。raw material は source of truth として扱い、軽い metadata や backlink 以外では原則として書き換えない。 |
+| Compiled wiki | `References/`, `Bases/`, `Projects/`, review 済み `Ideas/` | agent が維持する synthesis。重複ノートを作る前に既存ノートを更新し、cross-link を明示する。 |
+| Schema | `CLAUDE.md`, `commands/`, `skills/`, scripts, hooks | 運用契約。workflow が変わったら schema を進化させ、deterministic な guardrail と整合させる。 |
+
+### Source Ingestion
+
+1. まず source の provenance を記録する。URL、判明している author、capture date、利用可能な local asset path を残す。
+2. 新規ノートを作る前に、既存の `References/`, `Projects/`, `Bases/`, `Ideas/`, 関連する Daily note を検索する。
+3. `References/` または適切な Base に atomic note を作成または更新する。`Projects/` は active work のみに使い、`Ideas/` は未確定の可能性に使う。
+4. contradictions、superseded claims、open questions は、どれか一つを黙って選ぶのではなく destination note に記録する。
+5. source clipping/session note から、それによって変更された durable note へリンクし、durable note 側からも source へ backlink する。
+6. ingest によって wiki が実質的に変わった場合は、`Daily/YYYY-MM-DD.md ## AI Session` に短い trace を残す。
+
+### Query and Synthesis
+
+- まず compiled note を読み、compiled layer が missing、stale、または contested な場合にだけ raw source へ戻る。
+- query から再利用可能な synthesis が生まれた場合は、chat history だけに残さず、`References/`、Base、または active な `Projects/` note へ保存する。
+- 回答では使用した note への wikilink を示し、fact、interpretation、open question を区別する。
+
+### Wiki Lint
+
+定期的に vault を health-check し、duplicate concept note、orphan page、stale claim、未解決の contradiction、missing backlink、分割すべき oversized note、review が必要な `Meta/Promotions/` draft を探す。
+
 ## Note Templates
 
 Source: [masuda-so/Template-Vault](https://github.com/masuda-so/Template-Vault)
