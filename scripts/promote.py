@@ -294,7 +294,7 @@ def main() -> int:
         append_to_daily_section(
             daily_note,
             "## AI Session",
-            f"\n- {time_label} Promoted {len(promoted_list)} drafts to vault\n{summary}\n",
+            f"\n- {time_label} [promote] {len(promoted_list)} drafts to vault\n{summary}\n",
         )
 
     print(json.dumps(
