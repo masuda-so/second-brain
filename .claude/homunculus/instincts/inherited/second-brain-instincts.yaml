@@ -1,0 +1,318 @@
+# Instincts generated from https://github.com/masuda-so/second-brain
+# Generated: 2026-04-12T16:00:16.029Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: second-brain-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/masuda-so/second-brain
+---
+
+# Second Brain Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat
+
+## Evidence
+
+- 1 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat: integrate Karpathy LLM Wiki pattern — lint, index, synthesis, log tags
+
+---
+id: second-brain-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/masuda-so/second-brain
+---
+
+# Second Brain Commit Length
+
+## Action
+
+Write moderate-length commit messages (~76 characters)
+
+## Evidence
+
+- Average commit message length: 76 chars
+- Based on 1 commits
+
+---
+id: second-brain-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/masuda-so/second-brain
+---
+
+# Second Brain Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: second-brain-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/masuda-so/second-brain
+---
+
+# Second Brain Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: second-brain-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/masuda-so/second-brain
+---
+
+# Second Brain Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: second-brain-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/masuda-so/second-brain
+---
+
+# Second Brain Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: second-brain-instinct-file-naming
+trigger: "When creating a new Python file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct File Naming
+
+## Action
+
+Name the file using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.files: camelCase
+
+---
+id: second-brain-instinct-function-naming
+trigger: "When defining a function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: second-brain-instinct-class-naming
+trigger: "When defining a class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: second-brain-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: second-brain-instinct-import-style
+trigger: "When importing modules in Python files"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: second-brain-instinct-export-style
+trigger: "When exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: second-brain-instinct-git-commit-format
+trigger: "When writing a git commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Git Commit Format
+
+## Action
+
+Use the conventional commit format with 'feat' prefix for features
+
+## Evidence
+
+- Pattern in commits.prefixes: feat
+- Seen in commit: feat: integrate Karpathy LLM Wiki pattern — lint, index, synthesis, log tags
+
+---
+id: second-brain-instinct-commit-length
+trigger: "When composing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Commit Length
+
+## Action
+
+Aim for a commit message length around 76 characters
+
+## Evidence
+
+- Pattern in commits.averageLength: 76
+
+---
+id: second-brain-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Test Location
+
+## Action
+
+Place test files in a separate directory from source files
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation: separate
+
+---
+id: second-brain-instinct-common-folders
+trigger: "When organizing project folders"
+confidence: 0.7
+domain: architecture
+source: repo-analysis
+source_repo: masuda-so/second-brain
+---
+
+# Second Brain Instinct Common Folders
+
+## Action
+
+Include 'scripts', 'commands', and 'hooks' as common directories
+
+## Evidence
+
+- Pattern in architecture.folderStructure.commonFolders: scripts, commands, hooks
+
