@@ -83,6 +83,14 @@ if [[ -n "$WRITER_JSON" ]]; then
   DRAFT_PATHS="$(printf '%s' "$WRITER_JSON" | jq -r '.written[].path' 2>/dev/null || true)"
 fi
 
+# ── Phase 1b: Reflect pass — inject related References/ links into drafts ─────
+
+if [[ -n "$WRITER_JSON" && "$DRAFT_COUNT" -gt 0 ]]; then
+  printf '%s' "$WRITER_JSON" | \
+    SECOND_BRAIN_VAULT_PATH="$VAULT_PATH" \
+    python3 "$SCRIPT_DIR/reflect.py" 2>/dev/null || true
+fi
+
 # ── Format compact summary ────────────────────────────────────────────────────
 
 SUMMARY="$(printf '%s' "$CANDIDATES_JSON" | python3 - "$DRAFT_COUNT" "$DRAFT_PATHS" <<'PY'

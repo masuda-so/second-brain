@@ -487,6 +487,98 @@ echo "-- Summary"
 echo "   Templates synced: $synced, skipped: $skipped"
 echo ""
 
+# ── 6b. Meta/Profile/ — cognitive profile starter files (human-maintained) ───────────────────
+
+echo "-- Meta/Profile/"
+
+PROFILE_DIR="$VAULT_PATH/Meta/Profile"
+mkdir -p "$PROFILE_DIR"
+
+_sync_profile() {
+  local fname="$1"
+  local target="$PROFILE_DIR/$fname"
+  if [[ -f "$target" ]]; then
+    skip "$fname (already exists)"
+  else
+    cat > "$target"
+    ok "created Meta/Profile/$fname"
+  fi
+}
+
+_sync_profile "preferences.md" <<'PROF'
+---
+title: Capture Preferences
+type: profile
+topic: capture-preferences
+---
+## キャプチャ対象
+
+<!-- harvest.py が重要とみなすトピック・キーワードを記述してください -->
+<!-- 例: second-brain, obsidian, claude-code, 設計決定, アーキテクチャ -->
+
+## キャプチャ除外
+
+<!-- 誤検知しやすいトピック・用語を記述してください -->
+<!-- 例: デバッグ中の一時的なコード, テスト用のダミーデータ -->
+PROF
+
+_sync_profile "working-style.md" <<'PROF'
+---
+title: Working Style
+type: profile
+topic: working-style
+---
+## 作業パターン
+
+<!-- 典型的な作業セッションの流れを記述してください -->
+<!-- 例: 問題定義 → 実装 → 検証 → ドキュメント化 -->
+
+## フォーカス領域
+
+<!-- 現在注力しているプロジェクト・技術領域 -->
+
+## 思考スタイル
+
+<!-- ノートに残したい粒度・形式の好み -->
+<!-- 例: 決定の理由を残したい / 手順よりも原則を残したい -->
+PROF
+
+_sync_profile "review-policy.md" <<'PROF'
+---
+title: Review Policy
+type: profile
+topic: review-policy
+---
+## Meta/Promotions/ レビュー方針
+
+<!-- ドラフトを承認するかどうかの判断基準 -->
+<!-- 例: 同じトピックが 2 セッション以上現れたら昇格 -->
+
+## 昇格頻度
+
+<!-- どのくらいの頻度で /promote を実行するか -->
+<!-- 例: 週次レビュー時にまとめて処理 -->
+PROF
+
+_sync_profile "promotion-policy.md" <<'PROF'
+---
+title: Promotion Policy
+type: profile
+topic: promotion-policy
+---
+## 昇格先の判断基準
+
+<!-- References/ vs Ideas/ の判断基準 -->
+<!-- 例: 再利用可能な手順・決定 → References/  / まだ検討中 → Ideas/ -->
+
+## スコアしきい値の調整
+
+<!-- harvest.py のデフォルト (L1=3, L2=6, L3=9) を変えたい場合はここに記録 -->
+<!-- 変更には harvest.py の定数を直接編集してください -->
+PROF
+
+echo ""
+
 # ── 7. Vault CI (opt-in only: set SECOND_BRAIN_INSTALL_VAULT_CI=1 or pass --install-vault-ci) ──
 
 echo "-- Vault CI"
