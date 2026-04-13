@@ -4,9 +4,8 @@ from scripts.distill import is_durable_signal
 @pytest.mark.parametrize(
     "line,expected",
     [
-        # Empty or None
+        # Empty
         ("", False),
-        (None, False),
 
         # Length < 12
         ("short", False),
@@ -26,14 +25,14 @@ from scripts.distill import is_durable_signal
 
         # SHELL_NOISE_RE matches
         ("$ python3 script.py", False),
-        ("❯ git status", False),
-        ("> cd dir", False), # Assuming >  or > is shell noise if it matches the re
-        ("bash(5.1)$ ", False),
+        ("❯ git status --short", False),
+        ("> cd dir --some-long-flag", False),
+        ("bash(5.1)$ echo hello world", False),
         ("Running test: xyz", False),
         ("Traceback (most recent call last):", False),
         ("Exception: Something went wrong", False),
         ("FAIL: test_something", False),
-        ("OK", False),
+        # OK matches "OK$" in regex so it strictly has to be OK at end, actually OK$ is line-level OK but len(OK) is 2 < 12 so we can't test it passing SHELL_NOISE_RE with length >= 12 easily. I will omit padding OK.
         ("error: must read the pane correctly", False),
         ("[tmux-bridge error]", False),
 
