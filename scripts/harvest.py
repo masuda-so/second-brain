@@ -913,21 +913,21 @@ def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
     # L3: auto-draft Reference notes instead of just flagging
     l3_drafted = 0
     l3_lines = []
-    updates = []
+    l3_updates = []
     for r in l3_rows:
         ref_path = create_reference_from_candidate(vault, r)
         title = r["title"] or "untitled"
         if ref_path:
-            updates.append((str(ref_path), r["id"]))
+            l3_updates.append((str(ref_path), r["id"]))
             l3_drafted += 1
             l3_lines.append(f"  - [[References/{ref_path.stem}]] (score {r['importance']})")
         else:
             l3_lines.append(f"  - [ ] **{title}** (score {r['importance']}) — draft manually")
 
-    if updates:
+    if l3_updates:
         conn.executemany(
             "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
-            updates,
+            l3_updates,
         )
         conn.commit()
 
