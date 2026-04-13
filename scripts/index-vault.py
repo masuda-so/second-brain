@@ -398,35 +398,35 @@ def query_index(vault: pathlib.Path, keywords: list[str], limit: int = 10) -> li
         return []
 
     # Score each keyword match: title(3) + summary(2) + tags(2) + rel_path(1)
-    score_parts: list[str] = []
-    params: list[str] = []
-    where_parts: list[str] = []
-    for kw in keywords:
-        like = f"%{kw}%"
-        score_parts.append(
-            "(CASE WHEN title LIKE ? THEN 3 ELSE 0 END"
-            " + CASE WHEN summary LIKE ? THEN 2 ELSE 0 END"
-            " + CASE WHEN tags LIKE ? THEN 2 ELSE 0 END"
-            " + CASE WHEN rel_path LIKE ? THEN 1 ELSE 0 END)"
+    # We use json_each(?) to avoid dynamic SQL construction.
+    # The subquery calculates the sum of match scores for all keywords that match.
+    sql = """
+        WITH kw AS (
+            SELECT '%' || value || '%' AS pattern
+            FROM json_each(?)
         )
-        params.extend([like, like, like, like])
-        where_parts.append(
-            "(title LIKE ? OR summary LIKE ? OR tags LIKE ? OR rel_path LIKE ?)"
-        )
-        params.extend([like, like, like, like])
-
-    score_expr = " + ".join(score_parts)
-    where_expr = " OR ".join(where_parts)
-
-    rows = conn.execute(f"""
-        SELECT rel_path, title, note_type, directory, summary, tags,
-               body_chars, outbound, mtime,
-               ({score_expr}) AS score
-        FROM vault_index
-        WHERE {where_expr}
-        ORDER BY score DESC, body_chars DESC
+        SELECT v.rel_path, v.title, v.note_type, v.directory, v.summary, v.tags,
+               v.body_chars, v.outbound, v.mtime,
+               (
+                 SELECT SUM(
+                   CASE WHEN v.title LIKE kw.pattern THEN 3 ELSE 0 END +
+                   CASE WHEN v.summary LIKE kw.pattern THEN 2 ELSE 0 END +
+                   CASE WHEN v.tags LIKE kw.pattern THEN 2 ELSE 0 END +
+                   CASE WHEN v.rel_path LIKE kw.pattern THEN 1 ELSE 0 END
+                 )
+                 FROM kw
+                 WHERE v.title LIKE kw.pattern
+                    OR v.summary LIKE kw.pattern
+                    OR v.tags LIKE kw.pattern
+                    OR v.rel_path LIKE kw.pattern
+               ) AS score
+        FROM vault_index v
+        WHERE score > 0
+        ORDER BY score DESC, v.body_chars DESC
         LIMIT ?
-    """, [*params, limit]).fetchall()
+    """
+
+    rows = conn.execute(sql, [json.dumps(keywords), limit]).fetchall()
     conn.close()
 
     return [dict(row) for row in rows]
