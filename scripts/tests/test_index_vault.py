@@ -1,6 +1,8 @@
 import importlib.util
+import os
 import sys
 import pytest
+import pathlib
 from pathlib import Path
 import time
 import sqlite3
@@ -11,6 +13,10 @@ spec = importlib.util.spec_from_file_location("index_vault", script_path)
 index_vault = importlib.util.module_from_spec(spec)
 sys.modules["index_vault"] = index_vault
 spec.loader.exec_module(index_vault)
+
+
+# ── build_index tests ────────────────────────────────────────────────────────
+
 
 def test_build_index_basic(tmp_path):
     vault = tmp_path / "vault"
@@ -67,7 +73,7 @@ def test_build_index_incremental(tmp_path):
     assert stats2["removed"] == 0
 
     # Modify one note, add one note, delete one note
-    time.sleep(0.02) # Ensure mtime difference
+    time.sleep(0.02)  # Ensure mtime difference
     note1.write_text("---\ntitle: Ref 1 Updated\n---\nBody updated", encoding="utf-8")
 
     note3 = vault / "References" / "Ref3.md"
@@ -76,9 +82,9 @@ def test_build_index_incremental(tmp_path):
     note2.unlink()
 
     stats3 = index_vault.build_index(vault, incremental=True)
-    assert stats3["upserted"] == 2 # Ref1 and Ref3
+    assert stats3["upserted"] == 2  # Ref1 and Ref3
     assert stats3["skipped"] == 0
-    assert stats3["removed"] == 1 # Ref2
+    assert stats3["removed"] == 1  # Ref2
     assert stats3["total"] == 2
 
     conn = index_vault.get_db(vault)
@@ -115,6 +121,7 @@ def test_build_index_removal_non_incremental(tmp_path):
     conn.close()
     assert count == 0
 
+
 def test_build_index_skip_unreadable(tmp_path):
     vault = tmp_path / "vault"
     vault.mkdir()
@@ -122,11 +129,9 @@ def test_build_index_skip_unreadable(tmp_path):
 
     note = vault / "Ideas" / "Unreadable.md"
     note.write_text("test", encoding="utf-8")
-    note.chmod(0o000) # Remove read permissions
+    note.chmod(0o000)  # Remove read permissions
 
-    # Needs to be tested but let's avoid issues depending on how permissions work in docker
-    # Skip test logic inside if running as root
-    import os
+    # Skip test if running as root
     if os.geteuid() != 0:
         stats = index_vault.build_index(vault, incremental=False)
         assert stats["upserted"] == 0
@@ -142,7 +147,8 @@ def test_build_index_various_extraction(tmp_path):
     (vault / "Meta" / "Promotions").mkdir()
 
     note = vault / "Meta" / "Promotions" / "Promo1.md"
-    content = """---
+    content = """\
+---
 title: My Promo
 tags: [tag1, tag2]
 type: promo_type
@@ -168,3 +174,38 @@ Some body text with [[Link1]] and [[Link2|Alias]]
     assert row["tags"] == "[tag1, tag2]"
     assert row["outbound"] == 2
     assert row["body_chars"] > 0
+
+
+# ── scan_note tests ──────────────────────────────────────────────────────────
+
+
+def test_scan_note_oserror_read_text(monkeypatch):
+    """Test that scan_note gracefully handles an OSError when reading text."""
+    vault = pathlib.Path("/dummy/vault")
+    note = vault / "References" / "test.md"
+
+    def mock_read_text(*args, **kwargs):
+        raise OSError("Mocked OSError in read_text")
+
+    monkeypatch.setattr(pathlib.Path, "read_text", mock_read_text)
+
+    result = index_vault.scan_note(note, vault)
+    assert result is None
+
+
+def test_scan_note_oserror_stat(monkeypatch):
+    """Test that scan_note gracefully handles an OSError when accessing stat()."""
+    vault = pathlib.Path("/dummy/vault")
+    note = vault / "References" / "test.md"
+
+    def mock_read_text(*args, **kwargs):
+        return "some text"
+
+    def mock_stat(*args, **kwargs):
+        raise OSError("Mocked OSError in stat")
+
+    monkeypatch.setattr(pathlib.Path, "read_text", mock_read_text)
+    monkeypatch.setattr(pathlib.Path, "stat", mock_stat)
+
+    result = index_vault.scan_note(note, vault)
+    assert result is None

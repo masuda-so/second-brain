@@ -51,7 +51,8 @@ SESSION_NOTE_PATH="$VAULT_PATH/$SESSION_DIR/$TODAY/$SAFE_SESSION_ID.md"
 OUTPUT="$(VAULT_PATH="$VAULT_PATH" SESSION_NOTE_PATH="$SESSION_NOTE_PATH" TIME_LABEL="$TIME_LABEL" \
   SCRIPT_DIR="$SCRIPT_DIR" \
   python3 - "$PROMPT" <<'PYEOF'
-import os, sys, re, pathlib, json, subprocess
+import os, sys, re, pathlib, json
+import importlib.util
 
 prompt = sys.argv[1]
 vault_path = pathlib.Path(os.environ["VAULT_PATH"])
@@ -78,17 +79,15 @@ keywords = extract_keywords(prompt)
 if not keywords:
     sys.exit(0)
 
-# Query the vault index (SQL-backed, fast)
-kw_str = " ".join(keywords)
+# Query the vault index (SQL-backed, fast) via direct import
 index_script = pathlib.Path(script_dir) / "index-vault.py"
 
 try:
-    result = subprocess.run(
-        ["python3", str(index_script), "query", kw_str, "--limit", "5"],
-        capture_output=True, text=True, timeout=10,
-        env={**os.environ, "SECOND_BRAIN_VAULT_PATH": str(vault_path)},
-    )
-    hits = json.loads(result.stdout) if result.stdout.strip() else []
+    spec = importlib.util.spec_from_file_location("index_vault", str(index_script))
+    index_vault = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(index_vault)
+
+    hits = index_vault.query_index(vault_path, keywords, limit=5)
 except Exception:
     hits = []
 
