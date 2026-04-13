@@ -17,7 +17,6 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-CLAUDE_SETTINGS_DIR="$REPO_ROOT/.claude"
 
 # Optional: vault path override from first argument
 VAULT_PATH_ARG="${1:-}"
