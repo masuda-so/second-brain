@@ -2,13 +2,13 @@
 """
 reflect.py — lightweight post-pass: inject related References/ wikilinks into drafts.
 
-Reads distill-writer.py JSON output from stdin ({"written": [{"path": ..., "title": ...}]}).
+Reads distill-draft.py JSON output from stdin ({"written": [{"path": ..., "title": ...}]}).
 For each written draft, scans existing References/ notes, scores relevance by
 keyword overlap, and appends up to MAX_LINKS [[wikilinks]] to ## 関連資料.
 
 Deterministic and fast — no claude -p call, no network. Always exits 0 (fail-open).
 
-Usage (from session-distill.sh):
+Usage (from on-end-distill.sh):
   echo "$WRITER_JSON" | SECOND_BRAIN_VAULT_PATH=... python3 reflect.py
 """
 

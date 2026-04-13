@@ -5,7 +5,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/daily-note.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-start-daily.sh"
                     },
                     {
                         "type": "command",
@@ -13,11 +13,11 @@
                     },
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/project-state.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-start-project.sh"
                     },
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/weekly-draft.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-start-weekly.sh"
                     },
                     {
                         "type": "command",
@@ -39,7 +39,7 @@
                     },
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/context-recall.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-prompt-recall.sh"
                     },
                     {
                         "type": "command",
@@ -54,7 +54,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/protect-files.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/guard-files.sh"
                     }
                 ]
             },
@@ -63,11 +63,11 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-readonly-query.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/guard-readonly-query.sh"
                     },
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/protect-vault-rm.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/guard-vault-rm.sh"
                     }
                 ]
             }
@@ -78,7 +78,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/post-edit-check.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-edit-check.sh"
                     },
                     {
                         "type": "command",
@@ -123,7 +123,7 @@
                     },
                     {
                         "type": "command",
-                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-distill.sh"
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/on-end-distill.sh"
                     }
                 ]
             }
