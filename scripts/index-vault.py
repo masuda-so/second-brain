@@ -295,21 +295,22 @@ def build_index(vault: pathlib.Path, incremental: bool = False) -> dict:
         upserted += 1
 
     # Remove deleted notes from index
-    removed = 0
+    to_delete = []
     if not incremental:
         # Full build: remove anything not in current_paths
         for row in conn.execute("SELECT rel_path FROM vault_index"):
             if row["rel_path"] not in current_paths:
-                conn.execute("DELETE FROM vault_index WHERE rel_path = ?",
-                             (row["rel_path"],))
-                removed += 1
+                to_delete.append((row["rel_path"],))
     else:
         # Incremental: check existing entries that weren't visited
         for rel_path in existing:
             if rel_path not in current_paths:
-                conn.execute("DELETE FROM vault_index WHERE rel_path = ?",
-                             (rel_path,))
-                removed += 1
+                to_delete.append((rel_path,))
+
+    if to_delete:
+        conn.executemany("DELETE FROM vault_index WHERE rel_path = ?", to_delete)
+
+    removed = len(to_delete)
 
     conn.commit()
     conn.close()
@@ -398,35 +399,35 @@ def query_index(vault: pathlib.Path, keywords: list[str], limit: int = 10) -> li
         return []
 
     # Score each keyword match: title(3) + summary(2) + tags(2) + rel_path(1)
-    score_parts: list[str] = []
-    params: list[str] = []
-    where_parts: list[str] = []
-    for kw in keywords:
-        like = f"%{kw}%"
-        score_parts.append(
-            "(CASE WHEN title LIKE ? THEN 3 ELSE 0 END"
-            " + CASE WHEN summary LIKE ? THEN 2 ELSE 0 END"
-            " + CASE WHEN tags LIKE ? THEN 2 ELSE 0 END"
-            " + CASE WHEN rel_path LIKE ? THEN 1 ELSE 0 END)"
+    # We use json_each(?) to avoid dynamic SQL construction.
+    # The subquery calculates the sum of match scores for all keywords that match.
+    sql = """
+        WITH kw AS (
+            SELECT '%' || value || '%' AS pattern
+            FROM json_each(?)
         )
-        params.extend([like, like, like, like])
-        where_parts.append(
-            "(title LIKE ? OR summary LIKE ? OR tags LIKE ? OR rel_path LIKE ?)"
-        )
-        params.extend([like, like, like, like])
-
-    score_expr = " + ".join(score_parts)
-    where_expr = " OR ".join(where_parts)
-
-    rows = conn.execute(f"""
-        SELECT rel_path, title, note_type, directory, summary, tags,
-               body_chars, outbound, mtime,
-               ({score_expr}) AS score
-        FROM vault_index
-        WHERE {where_expr}
-        ORDER BY score DESC, body_chars DESC
+        SELECT v.rel_path, v.title, v.note_type, v.directory, v.summary, v.tags,
+               v.body_chars, v.outbound, v.mtime,
+               (
+                 SELECT SUM(
+                   CASE WHEN v.title LIKE kw.pattern THEN 3 ELSE 0 END +
+                   CASE WHEN v.summary LIKE kw.pattern THEN 2 ELSE 0 END +
+                   CASE WHEN v.tags LIKE kw.pattern THEN 2 ELSE 0 END +
+                   CASE WHEN v.rel_path LIKE kw.pattern THEN 1 ELSE 0 END
+                 )
+                 FROM kw
+                 WHERE v.title LIKE kw.pattern
+                    OR v.summary LIKE kw.pattern
+                    OR v.tags LIKE kw.pattern
+                    OR v.rel_path LIKE kw.pattern
+               ) AS score
+        FROM vault_index v
+        WHERE score > 0
+        ORDER BY score DESC, v.body_chars DESC
         LIMIT ?
-    """, [*params, limit]).fetchall()
+    """
+
+    rows = conn.execute(sql, [json.dumps(keywords), limit]).fetchall()
     conn.close()
 
     return [dict(row) for row in rows]

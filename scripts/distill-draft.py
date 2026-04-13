@@ -134,7 +134,8 @@ def generate_body_via_claude(signal: str) -> str | None:
 
     try:
         result = subprocess.run(
-            ["claude", "-p", "--system-prompt", system_prompt, prompt],
+            ["claude", "-p", "--system-prompt", system_prompt],
+            input=prompt,
             capture_output=True,
             text=True,
             timeout=CLAUDE_TIMEOUT,
