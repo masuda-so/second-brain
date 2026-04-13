@@ -87,7 +87,7 @@ class Issue:
     check: str             # orphan_pages, broken_links, etc.
     path: str              # relative vault path
     message: str
-    fixable: bool = False  # can lint fix auto-repair this?
+    fixable: bool = False  # whether this issue can be auto-repaired by lint fix
 
     def to_dict(self) -> dict:
         return {
@@ -232,6 +232,18 @@ def resolve_wikilink(target: str, vault: pathlib.Path) -> pathlib.Path | None:
     return None
 
 
+def _read_note(note: pathlib.Path, cache: dict[pathlib.Path, str]) -> str | None:
+    """Read a note from cache or disk."""
+    if note in cache:
+        return cache[note]
+    try:
+        text = note.read_text(encoding="utf-8", errors="ignore")
+        cache[note] = text
+        return text
+    except OSError:
+        return None
+
+
 # ── Checks ────────────────────────────────────────────────────────────────────
 
 def collect_notes(vault: pathlib.Path) -> list[pathlib.Path]:
@@ -264,7 +276,7 @@ def collect_all_notes(vault: pathlib.Path) -> list[pathlib.Path]:
 
 
 def build_link_graph(
-    notes: list[pathlib.Path], vault: pathlib.Path
+    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str]
 ) -> tuple[dict[str, set[str]], dict[str, list[tuple[str, str]]]]:
     """Build inbound link map and broken link map.
 
@@ -295,9 +307,8 @@ def build_link_graph(
     for note in notes:
         rel = str(note.relative_to(vault))
         rel_no_ext = re.sub(r"\.md$", "", rel)
-        try:
-            text = note.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
+        text = _read_note(note, content_cache)
+        if text is None:
             continue
 
         for m in WIKILINK_RE.finditer(text):
@@ -363,7 +374,7 @@ def check_broken_links(
 
 
 def check_frontmatter(
-    notes: list[pathlib.Path], vault: pathlib.Path
+    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str]
 ) -> list[Issue]:
     """Check required YAML frontmatter fields based on note type/directory."""
     issues: list[Issue] = []
@@ -372,9 +383,8 @@ def check_frontmatter(
         # Skip Promotions drafts — they have their own schema
         if rel.startswith("Meta/Promotions/"):
             continue
-        try:
-            text = note.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
+        text = _read_note(note, content_cache)
+        if text is None:
             continue
 
         fm = parse_frontmatter(text)
@@ -429,7 +439,7 @@ def check_stale_notes(
 
 
 def check_low_quality(
-    notes: list[pathlib.Path], vault: pathlib.Path
+    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str]
 ) -> list[Issue]:
     """Flag Ideas/ notes with near-empty body."""
     issues: list[Issue] = []
@@ -437,9 +447,8 @@ def check_low_quality(
         rel = str(note.relative_to(vault))
         if not rel.startswith("Ideas/"):
             continue
-        try:
-            text = note.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
+        text = _read_note(note, content_cache)
+        if text is None:
             continue
         body_len = note_body_length(text)
         if body_len < LOW_QUALITY_CHARS:
@@ -455,7 +464,7 @@ def check_low_quality(
 # ── Fix ───────────────────────────────────────────────────────────────────────
 
 def fix_frontmatter(
-    notes: list[pathlib.Path], vault: pathlib.Path, dry_run: bool = False
+    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str], dry_run: bool = False
 ) -> list[dict]:
     """Add missing 'type' field to notes based on directory."""
     fixed: list[dict] = []
@@ -463,9 +472,8 @@ def fix_frontmatter(
         rel = str(note.relative_to(vault))
         if rel.startswith("Meta/Promotions/"):
             continue
-        try:
-            text = note.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
+        text = _read_note(note, content_cache)
+        if text is None:
             continue
 
         fm = parse_frontmatter(text)
@@ -503,17 +511,18 @@ def run_check(vault: pathlib.Path, quick: bool = False) -> LintReport:
     report.scanned_dirs = [
         d for d in SCAN_DIRS if (vault / d).is_dir()
     ]
+    content_cache: dict[pathlib.Path, str] = {}
 
     # Always run: frontmatter + broken links (fast)
-    inbound, broken = build_link_graph(notes, vault)
-    report.issues.extend(check_frontmatter(notes, vault))
+    inbound, broken = build_link_graph(notes, vault, content_cache)
+    report.issues.extend(check_frontmatter(notes, vault, content_cache))
     report.issues.extend(check_broken_links(broken))
 
     if not quick:
         # Full audit adds: orphans, stale, low quality
         report.issues.extend(check_orphan_pages(notes, vault, inbound))
         report.issues.extend(check_stale_notes(notes, vault, inbound))
-        report.issues.extend(check_low_quality(notes, vault))
+        report.issues.extend(check_low_quality(notes, vault, content_cache))
 
     # Sort: high first, then medium, then low
     severity_order = {"high": 0, "medium": 1, "low": 2}
@@ -555,7 +564,8 @@ def main() -> int:
     elif subcmd == "fix":
         dry_run = "--dry-run" in sys.argv
         notes = collect_notes(vault)
-        fixed = fix_frontmatter(notes, vault, dry_run=dry_run)
+        content_cache: dict[pathlib.Path, str] = {}
+        fixed = fix_frontmatter(notes, vault, content_cache, dry_run=dry_run)
         result = {"fixed": fixed, "dry_run": dry_run}
         print(json.dumps(result, ensure_ascii=False, indent=2))
 

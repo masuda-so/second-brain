@@ -650,19 +650,23 @@ def promote_l1(vault: pathlib.Path, conn: sqlite3.Connection,
         ORDER BY importance DESC LIMIT 20
     """, (threshold,)).fetchall()
     count = 0
+    updates = []
     for row in rows:
         try:
             title = row["title"] or extract_title(row["content"]) or "Untitled Idea"
             path = create_note(vault, "Ideas", title, row["content"],
                                tags=["#idea", "#auto"], source=row["source"])
-            conn.execute(
-                "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
-                (str(path), row["id"]),
-            )
-            conn.commit()
+            updates.append((str(path), row["id"]))
             count += 1
         except Exception as e:
             warn(f"L1 promote error: {e}")
+
+    if updates:
+        conn.executemany(
+            "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
+            updates,
+        )
+        conn.commit()
     return count
 
 
@@ -675,19 +679,23 @@ def promote_l2(vault: pathlib.Path, conn: sqlite3.Connection) -> int:
         ORDER BY importance DESC LIMIT 10
     """, (L2_THRESHOLD,)).fetchall()
     count = 0
+    updates = []
     for row in rows:
         try:
             title = row["title"] or extract_title(row["content"]) or "Staged Note"
             path = create_note(vault, "Meta/Promotions", title, row["content"],
                                tags=["#staged", "#auto"], source=row["source"])
-            conn.execute(
-                "UPDATE candidates SET status='staged', vault_path=? WHERE id=?",
-                (str(path), row["id"]),
-            )
-            conn.commit()
+            updates.append((str(path), row["id"]))
             count += 1
         except Exception as e:
             warn(f"L2 promote error: {e}")
+
+    if updates:
+        conn.executemany(
+            "UPDATE candidates SET status='staged', vault_path=? WHERE id=?",
+            updates,
+        )
+        conn.commit()
     return count
 
 
@@ -905,19 +913,23 @@ def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
     # L3: auto-draft Reference notes instead of just flagging
     l3_drafted = 0
     l3_lines = []
+    l3_updates = []
     for r in l3_rows:
         ref_path = create_reference_from_candidate(vault, r)
         title = r["title"] or "untitled"
         if ref_path:
-            conn.execute(
-                "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
-                (str(ref_path), r["id"]),
-            )
-            conn.commit()
+            l3_updates.append((str(ref_path), r["id"]))
             l3_drafted += 1
             l3_lines.append(f"  - [[References/{ref_path.stem}]] (score {r['importance']})")
         else:
             l3_lines.append(f"  - [ ] **{title}** (score {r['importance']}) — draft manually")
+
+    if l3_updates:
+        conn.executemany(
+            "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
+            l3_updates,
+        )
+        conn.commit()
 
     lines = [f"- {time_label} [harvest] +{promoted} Ideas, +{staged} staged, +{l3_drafted} References drafted"]
     if l3_lines:
