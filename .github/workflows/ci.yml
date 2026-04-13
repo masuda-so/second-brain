@@ -7,6 +7,9 @@ on:
 
 jobs:
   validate:
+    # NOTE: This name is referenced by the "protect-main" GitHub Ruleset as a
+    # required status check. Renaming it without updating the ruleset will block
+    # all PR merges to main.
     name: Validate hooks, scripts, and init
     runs-on: ubuntu-latest
 
