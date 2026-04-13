@@ -295,21 +295,22 @@ def build_index(vault: pathlib.Path, incremental: bool = False) -> dict:
         upserted += 1
 
     # Remove deleted notes from index
-    removed = 0
+    to_delete = []
     if not incremental:
         # Full build: remove anything not in current_paths
         for row in conn.execute("SELECT rel_path FROM vault_index"):
             if row["rel_path"] not in current_paths:
-                conn.execute("DELETE FROM vault_index WHERE rel_path = ?",
-                             (row["rel_path"],))
-                removed += 1
+                to_delete.append((row["rel_path"],))
     else:
         # Incremental: check existing entries that weren't visited
         for rel_path in existing:
             if rel_path not in current_paths:
-                conn.execute("DELETE FROM vault_index WHERE rel_path = ?",
-                             (rel_path,))
-                removed += 1
+                to_delete.append((rel_path,))
+
+    if to_delete:
+        conn.executemany("DELETE FROM vault_index WHERE rel_path = ?", to_delete)
+
+    removed = len(to_delete)
 
     conn.commit()
     conn.close()
