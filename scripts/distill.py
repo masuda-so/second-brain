@@ -182,20 +182,30 @@ def find_active_project_slug(vault: pathlib.Path, cwd: pathlib.Path) -> str | No
         repo_name = ""
 
     dir_name = cwd.name
+    md_files = None
+
     for slug in (repo_name, dir_name):
         if not slug:
             continue
         exact = projects_dir / f"{slug}.md"
         if exact.exists():
             return exact.stem
-        for path in sorted(projects_dir.glob("*.md")):
+
+        if md_files is None:
+            md_files = sorted(projects_dir.glob("*.md"))
+
+        for path in md_files:
             if path.stem.lower() == slug.lower():
                 return path.stem
 
     best_match = None
     best_len = 0
     cwd_text = str(cwd)
-    for path in sorted(projects_dir.glob("*.md")):
+
+    if md_files is None:
+        md_files = sorted(projects_dir.glob("*.md"))
+
+    for path in md_files:
         stem = path.stem
         if len(stem) >= 4 and stem in cwd_text and len(stem) > best_len:
             best_match = stem
@@ -266,9 +276,13 @@ def classify_signal(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Dry-run distillation candidate extractor")
+    parser = argparse.ArgumentParser(
+        description="Dry-run distillation candidate extractor"
+    )
     parser.add_argument("session_note", nargs="?", help="Optional session note path")
-    parser.add_argument("--session-id", help="Optional session id used to resolve Meta/AI Sessions path")
+    parser.add_argument(
+        "--session-id", help="Optional session id used to resolve Meta/AI Sessions path"
+    )
     args = parser.parse_args()
 
     try:
@@ -279,7 +293,11 @@ def main() -> int:
         return 0
 
     today = datetime.now().strftime("%Y-%m-%d")
-    session_id = normalize_session_id(args.session_id) if args.session_id else extract_session_id()
+    session_id = (
+        normalize_session_id(args.session_id)
+        if args.session_id
+        else extract_session_id()
+    )
     session_note = resolve_session_note(vault, args.session_note, session_id, today)
     daily_note = vault / "Daily" / f"{today}.md"
     cwd = pathlib.Path(os.getcwd())
