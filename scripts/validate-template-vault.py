@@ -137,90 +137,94 @@ def check_template(name: str, body: str, note_type: str) -> None:
             fail(f"heading '## {heading}' missing (template: {name})")
 
 
-print("=== Template-Vault Compatibility Check ===\n")
-print("-- init.sh template definitions")
+def main():
+    print("=== Template-Vault Compatibility Check ===\n")
+    print("-- init.sh template definitions")
 
-templates = extract_templates_from_init()
-if templates:
-    # Map filename → type
-    type_map = {
-        "daily.md": "daily", "weekly.md": "weekly", "monthly.md": "monthly",
-        "project.md": "project", "idea.md": "idea",
-        "reference.md": "reference", "clipping.md": "clipping",
-    }
-    for fname, body in templates.items():
-        note_type = type_map.get(fname)
-        if note_type:
-            check_template(fname, body, note_type)
-else:
-    fail("No sync_template definitions found in init.sh")
-
-
-# ── 2. Validate harvest.py note creation schemas ─────────────────────────────
-
-print("\n-- harvest.py note schemas")
-
-harvest_py = REPO_ROOT / "scripts" / "harvest.py"
-if not harvest_py.exists():
-    fail("scripts/harvest.py not found")
-else:
-    text = harvest_py.read_text()
-
-    # Ideas/ format: must have type, status, created, tags, harvest_source
-    idea_fields = ["type: idea", "status: incubating", "created:", "tags:", "harvest_source:"]
-    print("\n  [Ideas/ format in harvest.py]")
-    for field in idea_fields:
-        if field in text:
-            ok(f"'{field}' present in create_note()")
-        else:
-            fail(f"'{field}' missing from create_note() — Ideas/ notes will be non-compliant")
-
-    # Ideas/ headings
-    idea_headings = ["プロジェクト化の条件", "下書き素材"]
-    for heading in idea_headings:
-        if heading in text:
-            ok(f"'## {heading}' present in create_note()")
-        else:
-            fail(f"'## {heading}' missing from create_note()")
-
-    # Reference stubs: must have type, topic, created
-    ref_fields = ["type: reference", "topic:", "created:"]
-    print("\n  [References/ stub format in harvest.py]")
-    for field in ref_fields:
-        if field in text:
-            ok(f"'{field}' present in reference stub")
-        else:
-            fail(f"'{field}' missing from reference stub")
-
-    # Reference headings
-    ref_headings = ["目的", "手順", "関連資料"]
-    for heading in ref_headings:
-        if heading in text:
-            ok(f"'## {heading}' present in reference stub")
-        else:
-            fail(f"'## {heading}' missing from reference stub")
-
-    # Weekly/Monthly: check _maybe_create_periodic_notes
-    print("\n  [Weekly/Monthly format in harvest.py]")
-    weekly_fields = ["type: weekly", "week:", "reviewed:", "planning"]
-    for field in weekly_fields:
-        if field in text:
-            ok(f"'{field}' present in periodic notes")
-        else:
-            fail(f"'{field}' missing from periodic notes")
-
-    monthly_fields = ["type: monthly", "period:", "monthly"]
-    for field in monthly_fields:
-        if field in text:
-            ok(f"'{field}' present in periodic notes")
-        else:
-            fail(f"'{field}' missing from periodic notes")
+    templates = extract_templates_from_init()
+    if templates:
+        # Map filename → type
+        type_map = {
+            "daily.md": "daily", "weekly.md": "weekly", "monthly.md": "monthly",
+            "project.md": "project", "idea.md": "idea",
+            "reference.md": "reference", "clipping.md": "clipping",
+        }
+        for fname, body in templates.items():
+            note_type = type_map.get(fname)
+            if note_type:
+                check_template(fname, body, note_type)
+    else:
+        fail("No sync_template definitions found in init.sh")
 
 
-# ── Result ────────────────────────────────────────────────────────────────────
+    # ── 2. Validate harvest.py note creation schemas ─────────────────────────────
 
-print(f"\n=== Result: {checks} passed, {len(errors)} failed ===\n")
-if errors:
-    for e in errors:
-        print(f"  - {e}")
-    sys.exit(1)
+    print("\n-- harvest.py note schemas")
+
+    harvest_py = REPO_ROOT / "scripts" / "harvest.py"
+    if not harvest_py.exists():
+        fail("scripts/harvest.py not found")
+    else:
+        text = harvest_py.read_text()
+
+        # Ideas/ format: must have type, status, created, tags, harvest_source
+        idea_fields = ["type: idea", "status: incubating", "created:", "tags:", "harvest_source:"]
+        print("\n  [Ideas/ format in harvest.py]")
+        for field in idea_fields:
+            if field in text:
+                ok(f"'{field}' present in create_note()")
+            else:
+                fail(f"'{field}' missing from create_note() — Ideas/ notes will be non-compliant")
+
+        # Ideas/ headings
+        idea_headings = ["プロジェクト化の条件", "下書き素材"]
+        for heading in idea_headings:
+            if heading in text:
+                ok(f"'## {heading}' present in create_note()")
+            else:
+                fail(f"'## {heading}' missing from create_note()")
+
+        # Reference stubs: must have type, topic, created
+        ref_fields = ["type: reference", "topic:", "created:"]
+        print("\n  [References/ stub format in harvest.py]")
+        for field in ref_fields:
+            if field in text:
+                ok(f"'{field}' present in reference stub")
+            else:
+                fail(f"'{field}' missing from reference stub")
+
+        # Reference headings
+        ref_headings = ["目的", "手順", "関連資料"]
+        for heading in ref_headings:
+            if heading in text:
+                ok(f"'## {heading}' present in reference stub")
+            else:
+                fail(f"'## {heading}' missing from reference stub")
+
+        # Weekly/Monthly: check _maybe_create_periodic_notes
+        print("\n  [Weekly/Monthly format in harvest.py]")
+        weekly_fields = ["type: weekly", "week:", "reviewed:", "planning"]
+        for field in weekly_fields:
+            if field in text:
+                ok(f"'{field}' present in periodic notes")
+            else:
+                fail(f"'{field}' missing from periodic notes")
+
+        monthly_fields = ["type: monthly", "period:", "monthly"]
+        for field in monthly_fields:
+            if field in text:
+                ok(f"'{field}' present in periodic notes")
+            else:
+                fail(f"'{field}' missing from periodic notes")
+
+
+    # ── Result ────────────────────────────────────────────────────────────────────
+
+    print(f"\n=== Result: {checks} passed, {len(errors)} failed ===\n")
+    if errors:
+        for e in errors:
+            print(f"  - {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
