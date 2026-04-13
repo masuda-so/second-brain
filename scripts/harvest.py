@@ -664,7 +664,7 @@ def promote_l1(vault: pathlib.Path, conn: sqlite3.Connection,
     if updates:
         conn.executemany(
             "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
-            updates
+            updates,
         )
         conn.commit()
     return count
@@ -693,7 +693,7 @@ def promote_l2(vault: pathlib.Path, conn: sqlite3.Connection) -> int:
     if updates:
         conn.executemany(
             "UPDATE candidates SET status='staged', vault_path=? WHERE id=?",
-            updates
+            updates,
         )
         conn.commit()
     return count
@@ -927,7 +927,7 @@ def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
     if l3_updates:
         conn.executemany(
             "UPDATE candidates SET status='promoted', vault_path=? WHERE id=?",
-            l3_updates
+            l3_updates,
         )
         conn.commit()
 
