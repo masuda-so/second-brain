@@ -4,7 +4,7 @@
 # What this does:
 #   1. Check required dependencies (jq, python3)
 #   2. Create settings.json from example if missing (SECOND_BRAIN_VAULT_PATH only)
-#   3. Fix script permissions (chmod +x)
+#   3. Ensure script permissions (chmod +x)
 #   4. Validate hooks config
 #   5. Validate vault path and directory structure
 #   6. Sync Templates/ to the vault (idempotent — skips existing files)
