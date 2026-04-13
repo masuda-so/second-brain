@@ -14,7 +14,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INPUT="$(cat 2>/dev/null || true)"
 
 warn() {
-  echo "second-brain: project-state: $*" >&2
+  echo "second-brain: on-start-project: $*" >&2
 }
 
 bail() {

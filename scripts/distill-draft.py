@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-distill-writer.py — Phase 1: deterministic draft-note generator.
+distill-draft.py — Phase 1: deterministic draft-note generator.
 
 Takes distill.py candidates JSON and writes template-compliant note drafts
 to Meta/Promotions/. Never writes to canonical vault locations (References/,
 Projects/, Ideas/). Each draft includes provenance, reviewed_status: false,
 and generated: true so Phase 2 can make deterministic promotion decisions.
 
-Usage (from session-distill.sh):
-  SECOND_BRAIN_VAULT_PATH=... python3 distill-writer.py \\
+Usage (from on-end-distill.sh):
+  SECOND_BRAIN_VAULT_PATH=... python3 distill-draft.py \\
       --session-id SESSION_ID --date YYYY-MM-DD
 
   (reads candidates JSON from stdin)
@@ -41,7 +41,7 @@ DRAFT_PREFIX = "draft"
 
 
 def warn(msg: str) -> None:
-    print(f"distill-writer: {msg}", file=sys.stderr)
+    print(f"distill-draft: {msg}", file=sys.stderr)
 
 
 def get_vault_path() -> pathlib.Path:

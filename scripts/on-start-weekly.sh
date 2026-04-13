@@ -1,5 +1,5 @@
 #!/bin/bash
-# weekly-draft.sh — SessionStart hook: auto-create Weekly draft on Mondays.
+# on-start-weekly.sh — SessionStart hook: auto-create Weekly draft on Mondays.
 #
 # Fires on SessionStart. If today is Monday AND Weekly/YYYY-Www.md does not
 # yet exist, creates a draft with:
@@ -15,7 +15,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-warn() { echo "second-brain: weekly-draft: $*" >&2; }
+warn() { echo "second-brain: on-start-weekly: $*" >&2; }
 bail() { warn "$*"; exit 0; }
 
 command -v python3 >/dev/null 2>&1 || bail "python3 required"

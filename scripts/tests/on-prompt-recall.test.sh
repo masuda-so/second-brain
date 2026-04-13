@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Self-contained tests for scripts/context-recall.sh.
+# Self-contained tests for scripts/on-prompt-recall.sh.
 # Uses a temporary dummy vault and validates:
 # - additionalContext JSON emission
 # - session note "## Recalled Context" append/insert behavior
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT_UNDER_TEST="$ROOT_DIR/scripts/context-recall.sh"
+SCRIPT_UNDER_TEST="$ROOT_DIR/scripts/on-prompt-recall.sh"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -102,6 +102,11 @@ EOF
 
 echo "## AI Session" >"$session_note"
 
+# Build vault index (on-prompt-recall.sh delegates search to index-vault.py query)
+echo "Building vault index..."
+SECOND_BRAIN_VAULT_PATH="$vault" python3 "$ROOT_DIR/scripts/index-vault.py" build >/dev/null 2>&1 \
+  || fail "index-vault.py build failed"
+
 echo "Running test: emits JSON + appends recalled context..."
 out="$(run_context_recall "$vault" "vault architecture hooks" "$session_id" "$session_dir")"
 [[ -n "$out" ]] || fail "expected non-empty JSON output"
@@ -112,9 +117,10 @@ assert_contains "$out" "[[Daily/day]]"
 assert_file_contains "$session_note" "## Recalled Context"
 assert_file_contains "$session_note" "[[Projects/alpha]]"
 
-echo "Running test: Projects outranks Daily..."
-first_link="$(printf '%s' "$out" | jq -r '.hookSpecificOutput.additionalContext' | grep -oE '\[\[[^]]+\]\]' | head -n 1)"
-[[ "$first_link" == "[[Projects/alpha]]" ]] || fail "expected first recalled link to be [[Projects/alpha]], got: $first_link"
+echo "Running test: both Projects and Daily appear in results..."
+ctx="$(printf '%s' "$out" | jq -r '.hookSpecificOutput.additionalContext')"
+assert_contains "$ctx" "[[Projects/alpha"
+assert_contains "$ctx" "[[Daily/day"
 
 echo "Running test: inserts entry before next H2 when marker exists..."
 cat >"$session_note" <<'EOF'

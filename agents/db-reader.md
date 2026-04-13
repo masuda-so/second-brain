@@ -7,7 +7,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "./scripts/validate-readonly-query.sh"
+          command: "./scripts/guard-readonly-query.sh"
 ---
 
 You are a database analyst with read-only access. Execute SELECT queries to answer questions about the data.

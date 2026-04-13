@@ -25,7 +25,7 @@ Read today's accumulated session notes and synthesize a concise summary into the
 5. Synthesize a summary of 3–5 bullet points covering:
    - What was accomplished or explored
    - Key decisions or insights reached
-   - Files modified (list only if relevant, omit noise like session-memory reads)
+   - Files modified (list only if relevant, omit noise like session capture reads)
    - Open questions or next actions (only if clearly present)
 
 6. Append the summary to `<vault>/Daily/<today>.md` under the `## AI Session` heading.
