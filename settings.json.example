@@ -1,0 +1,8 @@
+{
+    "env": {
+        "SECOND_BRAIN_VAULT_PATH": "/path/to/your/obsidian/vault",
+        "SECOND_BRAIN_DAILY_DIR": "Daily",
+        "SECOND_BRAIN_SESSION_DIR": "Meta/AI Sessions",
+        "SECOND_BRAIN_CAPTURE_STRICT": "0"
+    }
+}

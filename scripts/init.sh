@@ -3,10 +3,15 @@
 #
 # What this does:
 #   1. Check required dependencies (jq, python3)
-#   2. Fix script permissions (chmod +x)
-#   3. Validate vault path and directory structure
-#   4. Sync Templates/ to the vault (idempotent — skips existing files)
-#   5. Print a status summary with pass/fail for each check
+#   2. Create settings.json from example if missing (SECOND_BRAIN_VAULT_PATH only)
+#   3. Fix script permissions (chmod +x)
+#   4. Validate hooks config
+#   5. Validate vault path and directory structure
+#   6. Sync Templates/ to the vault (idempotent — skips existing files)
+#   7. Print a status summary with pass/fail for each check
+#
+# Note: CLAUDE_PLUGIN_ROOT is auto-provided by the Claude Code plugin system.
+# Only SECOND_BRAIN_VAULT_PATH needs user configuration.
 
 set -uo pipefail
 
@@ -51,40 +56,63 @@ fi
 
 echo ""
 
-# ── 2. CLAUDE_PLUGIN_ROOT in settings.json ────────────────────────────────────
+# ── 2. settings.json — create from example if missing ─────────────────────────
 
-echo "-- CLAUDE_PLUGIN_ROOT"
+echo "-- settings.json"
 
 SETTINGS_FILE="$REPO_ROOT/settings.json"
-if [[ ! -f "$SETTINGS_FILE" ]]; then
-  fail "settings.json not found — creating with CLAUDE_PLUGIN_ROOT"
-  printf '{\n    "env": {\n        "CLAUDE_PLUGIN_ROOT": "%s"\n    }\n}\n' "$REPO_ROOT" > "$SETTINGS_FILE"
-else
-  CURRENT_ROOT=$(python3 -c "
-import json, sys
-try:
-    d = json.load(open('$SETTINGS_FILE'))
-    print(d.get('env', {}).get('CLAUDE_PLUGIN_ROOT', ''))
-except Exception:
-    pass
-" 2>/dev/null || true)
+SETTINGS_EXAMPLE="$REPO_ROOT/settings.json.example"
+PLACEHOLDER="/path/to/your/obsidian/vault"
 
-  if [[ "$CURRENT_ROOT" == "$REPO_ROOT" ]]; then
-    ok "CLAUDE_PLUGIN_ROOT = $REPO_ROOT"
-  elif [[ -z "$CURRENT_ROOT" ]]; then
-    # Inject CLAUDE_PLUGIN_ROOT into existing settings.json
-    python3 - "$SETTINGS_FILE" "$REPO_ROOT" <<'PY'
+if [[ ! -f "$SETTINGS_FILE" ]]; then
+  if [[ -f "$SETTINGS_EXAMPLE" ]]; then
+    cp "$SETTINGS_EXAMPLE" "$SETTINGS_FILE"
+    ok "created settings.json from example"
+    if [[ -n "$VAULT_PATH_ARG" ]]; then
+      python3 - "$SETTINGS_FILE" "$VAULT_PATH_ARG" <<'PY'
 import json, sys
-path, root = sys.argv[1], sys.argv[2]
+path, vault = sys.argv[1], sys.argv[2]
 d = json.load(open(path))
-d.setdefault("env", {})["CLAUDE_PLUGIN_ROOT"] = root
+d.setdefault("env", {})["SECOND_BRAIN_VAULT_PATH"] = vault
 with open(path, "w") as f:
     json.dump(d, f, indent=4, ensure_ascii=False)
     f.write("\n")
 PY
-    ok "CLAUDE_PLUGIN_ROOT injected into settings.json ($REPO_ROOT)"
+      ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
+    else
+      warn "Edit settings.json and set SECOND_BRAIN_VAULT_PATH to your vault path"
+    fi
   else
-    warn "CLAUDE_PLUGIN_ROOT is '$CURRENT_ROOT' (expected '$REPO_ROOT') — update settings.json manually if needed"
+    fail "settings.json.example not found — cannot create settings.json"
+  fi
+else
+  # Verify SECOND_BRAIN_VAULT_PATH is set and not a placeholder
+  CURRENT_VAULT=$(python3 -c "
+import json
+try:
+    d = json.load(open('$SETTINGS_FILE'))
+    print(d.get('env', {}).get('SECOND_BRAIN_VAULT_PATH', ''))
+except Exception:
+    pass
+" 2>/dev/null || true)
+
+  if [[ -z "$CURRENT_VAULT" || "$CURRENT_VAULT" == "$PLACEHOLDER" ]]; then
+    if [[ -n "$VAULT_PATH_ARG" ]]; then
+      python3 - "$SETTINGS_FILE" "$VAULT_PATH_ARG" <<'PY'
+import json, sys
+path, vault = sys.argv[1], sys.argv[2]
+d = json.load(open(path))
+d.setdefault("env", {})["SECOND_BRAIN_VAULT_PATH"] = vault
+with open(path, "w") as f:
+    json.dump(d, f, indent=4, ensure_ascii=False)
+    f.write("\n")
+PY
+      ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
+    else
+      fail "SECOND_BRAIN_VAULT_PATH not configured — run: second-brain:init /your/vault/path"
+    fi
+  else
+    ok "SECOND_BRAIN_VAULT_PATH = $CURRENT_VAULT"
   fi
 fi
 
