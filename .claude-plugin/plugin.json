@@ -1,26 +1,23 @@
 {
-    "name": "plugin-name",
-    "version": "1.2.0",
-    "description": "Brief plugin description",
+    "name": "knowledge-os",
+    "version": "0.1.0",
+    "description": "Claude Code guardrails and operator prompts for an Obsidian-backed Knowledge OS.",
     "author": {
-        "name": "Author Name",
-        "email": "author@example.com",
-        "url": "https://github.com/author"
+        "name": "masudaso"
     },
-    "homepage": "https://docs.example.com/plugin",
-    "repository": "https://github.com/author/plugin",
     "license": "MIT",
     "keywords": [
-        "keyword1",
-        "keyword2"
+        "claude-code",
+        "obsidian",
+        "knowledge-os",
+        "second-brain",
+        "hooks"
     ],
     "commands": [
-        "./custom/commands/special.md"
+        "./commands/status.md",
+        "./commands/logs.md"
     ],
-    "agents": "./custom/agents/",
-    "skills": "./custom/skills/",
-    "hooks": "./config/hooks.json",
-    "mcpServers": "./mcp-config.json",
-    "outputStyles": "./styles/",
-    "lspServers": "./.lsp.json"
+    "agents": "./agents/",
+    "skills": "./skills/",
+    "hooks": "./hooks/hooks.json"
 }
