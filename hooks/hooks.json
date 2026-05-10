@@ -18,6 +18,14 @@
                     {
                         "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/weekly-draft.sh"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/index-vault.py update"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/lint.py quick"
                     }
                 ]
             }
