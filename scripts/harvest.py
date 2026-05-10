@@ -83,6 +83,26 @@ NOISE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Prompts that are instructions to AI rather than knowledge to capture.
+# Filtered unless the prompt starts with an explicit importance marker.
+PROMPT_INSTRUCTION_RE = re.compile(
+    r"(してください|して下さい|してほしい|しますか[?？]|ですか[?？]|"
+    r"を(確認|教え|説明|見せ|チェック|実装|作成|生成|修正|改善|追加|削除)し?"
+    r"|(please\s+)?(explain|implement|create|generate|fix|add|remove|"
+    r"check|verify|review|show|describe|list|summarize))",
+    re.IGNORECASE,
+)
+
+# Explicit importance markers — keep the prompt even if it also looks instructional
+PROMPT_IMPORTANCE_MARKER_RE = re.compile(
+    r"^(重要|ポイント|覚えて|remember|note[:\s]|important[:\s]|key[:\s]|"
+    r"決定|決めた|採用)",
+    re.IGNORECASE,
+)
+
+# Minimum character count for a prompt to be worth harvesting as a note
+PROMPT_MIN_CHARS = 25
+
 # Vault directories that are ephemeral/session artifacts — never harvest writes from these
 VAULT_EPHEMERAL_DIRS = (
     "Daily/", "Weekly/", "Monthly/",
@@ -688,14 +708,24 @@ def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
     prompt = (event.get("prompt") or event.get("message") or
               event.get("user_prompt") or "")
     if prompt:
-        if not NOISE_RE.match(prompt.strip()):
-            # Count only substantive prompts (after noise filter)
+        prompt_stripped = prompt.strip()
+        if not NOISE_RE.match(prompt_stripped):
+            # Count all substantive prompts for checkpoint frequency tracking
             conn.execute("""
                 INSERT INTO prompt_counter (session_id, count) VALUES (?, 1)
                 ON CONFLICT(session_id) DO UPDATE SET count = count + 1
             """, (session_id,))
             conn.commit()
-            pieces.append(("prompt", prompt))
+            # Additional prompt filters: skip AI directives and very short messages.
+            # Short messages (< PROMPT_MIN_CHARS) are conversational, not knowledge.
+            # Instruction-type prompts ("〜してください") are AI task directives, not
+            # standalone knowledge — unless the user has flagged them with an explicit
+            # importance marker ("重要:", "決定:", "remember:", etc.).
+            is_instruction = PROMPT_INSTRUCTION_RE.search(prompt_stripped)
+            has_marker = PROMPT_IMPORTANCE_MARKER_RE.match(prompt_stripped)
+            if (len(prompt_stripped) >= PROMPT_MIN_CHARS and
+                    not (is_instruction and not has_marker)):
+                pieces.append(("prompt", prompt))
 
     # Tool events
     tool_name = event.get("tool_name", event.get("toolName", ""))
