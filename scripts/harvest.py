@@ -117,7 +117,19 @@ REFERENCE_SKIP = {
     "config", "app", "api", "data", "type", "types", "base", "core", "true", "false",
     "none", "null", "undefined", "new", "old", "tmp", "temp", "todo", "fixme",
     "error", "output", "result", "value", "item", "file", "path", "name", "text",
+    # Common words that slip through but aren't useful concepts
+    "status", "note", "state", "mode", "flag", "list", "set", "map", "key", "val",
+    "str", "int", "bool", "dict", "obj", "cls", "self", "args", "kwargs", "env",
+    "log", "msg", "buf", "ctx", "req", "res", "err", "ret",
 }
+
+# Entities matching these patterns are technical artifacts, not knowledge concepts
+ENTITY_NOISE_RE = re.compile(
+    r"[/\\*?]"        # path or glob/regex metacharacters
+    r"|^#!"           # shebangs (#!/bin/bash)
+    r"|^\d+$"         # pure numbers
+    r"|^[A-Z_]{2,}$", # ALL_CAPS constants (env vars: PATH, VAULT_PATH)
+)
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -330,6 +342,9 @@ def append_under_heading(path: pathlib.Path, heading: str, content: str) -> None
 def create_reference_stub(vault: pathlib.Path, entity: str) -> bool:
     """Create a References/ stub for a recurring entity if it doesn't exist.
     Returns True if a new file was created."""
+    # Skip technical artifacts: shebangs, paths, regex patterns, ALL_CAPS constants
+    if ENTITY_NOISE_RE.search(entity):
+        return False
     slug = slugify(entity)
     if not slug or len(entity) < 4 or slug in REFERENCE_SKIP:
         return False
