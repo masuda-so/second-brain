@@ -94,12 +94,12 @@ fi
 
 # ── Format compact summary ────────────────────────────────────────────────────
 
-SUMMARY="$(printf '%s' "$CANDIDATES_JSON" | python3 - "$DRAFT_COUNT" "$DRAFT_PATHS" <<'PY'
+SUMMARY="$(python3 - "$CANDIDATES_JSON" "$DRAFT_COUNT" "$DRAFT_PATHS" <<'PY'
 import json, sys
 
-data = json.load(sys.stdin)
-draft_count = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-draft_paths = sys.argv[2] if len(sys.argv) > 2 else ""
+data = json.loads(sys.argv[1])
+draft_count = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+draft_paths = sys.argv[3] if len(sys.argv) > 3 else ""
 
 candidates = data.get("candidates", [])
 lines = []
