@@ -308,6 +308,7 @@ def create_reference_stub(vault: pathlib.Path, entity: str) -> bool:
     today = datetime.now().strftime("%Y-%m-%d")
     content = textwrap.dedent(f"""\
         ---
+        title: {entity}
         type: reference
         topic: {entity}
         created: {today}
@@ -316,7 +317,7 @@ def create_reference_stub(vault: pathlib.Path, entity: str) -> bool:
 
         ## 手順
 
-        > [!important] 再利用ルール
+        > [!warning] 再利用ルール
 
         ## 関連資料
     """)
@@ -345,6 +346,7 @@ def _maybe_create_periodic_notes(vault: pathlib.Path) -> None:
         reviewed = today.strftime("%Y-%m-%d")
         body = textwrap.dedent(f"""\
             ---
+            title: {week_str}
             type: weekly
             week: {week_str}
             reviewed: {reviewed}
@@ -380,6 +382,7 @@ def _maybe_create_periodic_notes(vault: pathlib.Path) -> None:
     if not monthly_path.exists():
         body = textwrap.dedent(f"""\
             ---
+            title: {month_str}
             type: monthly
             period: {month_str}
             tags:
@@ -392,7 +395,7 @@ def _maybe_create_periodic_notes(vault: pathlib.Path) -> None:
 
             ## 改善点
 
-            > [!important] 月次判断
+            > [!warning] 月次判断
             > 実行可能な項目は Projects に移し、原則は References に残す。
 
             ## 来月の焦点
@@ -431,6 +434,7 @@ def create_note(vault: pathlib.Path, target_dir: str, title: str, content: str,
         tag_lines = "".join(f"\n  - {t}" for t in bare_tags)
         front = textwrap.dedent(f"""\
             ---
+            title: {title}
             type: idea
             status: incubating
             created: {today}
@@ -478,6 +482,7 @@ def create_reference_from_candidate(vault: pathlib.Path,
     purpose = row["content"][:400].strip()
     body = textwrap.dedent(f"""\
         ---
+        title: {title}
         type: reference
         topic: {title}
         created: {today}
@@ -490,7 +495,7 @@ def create_reference_from_candidate(vault: pathlib.Path,
 
         ## 手順
 
-        > [!important] 再利用ルール
+        > [!warning] 再利用ルール
 
         ## 関連資料
     """)
@@ -664,11 +669,17 @@ def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
     tool_input = event.get("tool_input") or {}
     tool_resp = str(event.get("tool_response", event.get("tool_output", "")) or "")
 
-    if tool_name in ("Write", "Edit", "MultiEdit"):
+    if tool_name in ("Write", "Edit"):
         fp = tool_input.get("file_path", "")
         body = tool_input.get("content", tool_input.get("new_string", ""))
         if body and len(body) > 40:
             pieces.append((f"write:{fp}", body[:MAX_CONTENT_LEN]))
+    elif tool_name == "MultiEdit":
+        fp = tool_input.get("file_path", "")
+        for edit in tool_input.get("edits", []):
+            body = edit.get("new_string", "")
+            if body and len(body) > 40:
+                pieces.append((f"write:{fp}", body[:MAX_CONTENT_LEN]))
 
     if tool_name == "Bash":
         cmd = tool_input.get("command", "")
