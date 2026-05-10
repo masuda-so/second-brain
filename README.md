@@ -31,8 +31,8 @@ Working in Claude Code
       │    ├─ worker [Stop] ────────────→ Ideas/  or  Meta/Promotions/
       │    └─ flush  [SessionEnd] ──────→ References/ auto-draft (L3) + Daily link
       │
-      └─ [SessionEnd] session-distill.sh
-           ├─ distill.py + distill-writer.py
+      └─ [SessionEnd] on-end-distill.sh
+           ├─ distill.py + distill-draft.py
            │    └─ claude -p ───────────→ Meta/Promotions/  (structured draft)
            └─ session-summarizer
                 └─ claude -p ───────────→ Daily note  ### 要約 (AI)

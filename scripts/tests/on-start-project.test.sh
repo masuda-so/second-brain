@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Self-contained tests for scripts/project-state.sh.
+# Self-contained tests for scripts/on-start-project.sh.
 # Focuses on find_project_note behavior:
 # - git repo root name preferred over cwd basename
 # - case-insensitive exact filename match
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT_UNDER_TEST="$ROOT_DIR/scripts/project-state.sh"
+SCRIPT_UNDER_TEST="$ROOT_DIR/scripts/on-start-project.sh"
 
 fail() {
   echo "FAIL: $*" >&2

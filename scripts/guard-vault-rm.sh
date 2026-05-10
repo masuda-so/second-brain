@@ -1,5 +1,5 @@
 #!/bin/bash
-# protect-vault-rm.sh — PreToolUse hook (Bash)
+# guard-vault-rm.sh — PreToolUse hook (Bash)
 # Blocks any Bash command containing rm / rmdir that targets the vault path.
 # Exits 2 (block) if a match is found; exits 0 (allow) otherwise.
 

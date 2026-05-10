@@ -1,5 +1,5 @@
 #!/bin/bash
-# daily-note.sh — SessionStart hook: auto-create Daily note if not exists.
+# on-start-daily.sh — SessionStart hook: auto-create Daily note if not exists.
 #
 # Fires on SessionStart. If Daily/YYYY-MM-DD.md does not exist, creates it with:
 #   - frontmatter (type: daily, date, tags)
@@ -15,7 +15,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-warn() { echo "second-brain: daily-note: $*" >&2; }
+warn() { echo "second-brain: on-start-daily: $*" >&2; }
 bail() { warn "$*"; exit 0; }
 
 command -v python3 >/dev/null 2>&1 || bail "python3 required"
