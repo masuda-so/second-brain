@@ -371,6 +371,30 @@ echo "-- Summary"
 echo "   Templates synced: $synced, skipped: $skipped"
 echo ""
 
+# ── 7. Vault CI (optional, for vault-as-a-repo users) ─────────────────────────
+
+echo "-- Vault CI"
+
+VAULT_GIT="$VAULT_PATH/.git"
+VAULT_WORKFLOWS="$VAULT_PATH/.github/workflows"
+EXAMPLE_CI="$REPO_ROOT/docs/examples/vault-ci.yml"
+VAULT_CI_TARGET="$VAULT_WORKFLOWS/vault-ci.yml"
+
+if [[ ! -d "$VAULT_GIT" ]]; then
+  skip "vault is not a git repo — skipping vault CI setup"
+elif [[ ! -f "$EXAMPLE_CI" ]]; then
+  warn "docs/examples/vault-ci.yml not found — skipping vault CI setup"
+elif [[ -f "$VAULT_CI_TARGET" ]]; then
+  skip "vault-ci.yml already exists in vault repo"
+else
+  mkdir -p "$VAULT_WORKFLOWS"
+  cp "$EXAMPLE_CI" "$VAULT_CI_TARGET"
+  ok "created .github/workflows/vault-ci.yml in vault repo"
+  warn "Review $VAULT_CI_TARGET before committing to your vault repo"
+fi
+
+echo ""
+
 # ── Result ─────────────────────────────────────────────────────────────────────
 
 if [[ $errors -eq 0 ]]; then
