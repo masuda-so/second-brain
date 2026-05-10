@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate hooks, scripts, and init
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── 1. hooks.json ────────────────────────────────────────────────────────
+      - name: Validate hooks/hooks.json
+        run: jq empty hooks/hooks.json
+
+      # ── 2. Shell syntax ──────────────────────────────────────────────────────
+      - name: Bash syntax check (bash -n)
+        run: |
+          for f in scripts/*.sh; do
+            echo "checking $f"
+            bash -n "$f"
+          done
+
+      # ── 3. ShellCheck ────────────────────────────────────────────────────────
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: ./scripts
+          severity: warning
+
+      # ── 4. Python syntax ─────────────────────────────────────────────────────
+      - name: Python syntax check (py_compile)
+        run: |
+          for f in scripts/*.py; do
+            echo "checking $f"
+            python3 -m py_compile "$f"
+          done
+
+      # ── 5. settings.json.example hygiene ─────────────────────────────────────
+      - name: settings.json.example hygiene
+        run: |
+          if grep -Ei '/Users/[a-zA-Z]+|C:\\\\|/home/[a-z]+/|token\s*[:=]|secret\s*[:=]|api_key\s*[:=]|password\s*[:=]' settings.json.example; then
+            echo "ERROR: settings.json.example contains user-specific paths or sensitive keywords"
+            exit 1
+          fi
+          echo "OK: settings.json.example is clean"
+
+      - name: settings.json must not be tracked
+        run: |
+          if git ls-files --error-unmatch settings.json 2>/dev/null; then
+            echo "ERROR: settings.json is tracked in git — it must be gitignored"
+            exit 1
+          fi
+          echo "OK: settings.json is gitignored"
+
+      # ── 6. init.sh integration test ──────────────────────────────────────────
+      - name: init.sh integration test
+        run: |
+          TMPVAULT=$(mktemp -d)
+          for d in Daily Weekly Monthly Projects Ideas References Clippings Meta Bases Templates; do
+            mkdir -p "$TMPVAULT/$d"
+          done
+          mkdir -p "$TMPVAULT/Meta/AI Sessions"
+          bash scripts/init.sh "$TMPVAULT"
+          STATUS=$?
+          rm -rf "$TMPVAULT"
+          exit $STATUS
+
+      # ── 7. Template-Vault compatibility ──────────────────────────────────────
+      - name: Template-Vault compatibility check
+        run: |
+          python3 scripts/validate-template-vault.py
