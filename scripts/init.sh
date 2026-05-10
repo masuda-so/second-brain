@@ -51,7 +51,46 @@ fi
 
 echo ""
 
-# ── 2. Script permissions ──────────────────────────────────────────────────────
+# ── 2. CLAUDE_PLUGIN_ROOT in settings.json ────────────────────────────────────
+
+echo "-- CLAUDE_PLUGIN_ROOT"
+
+SETTINGS_FILE="$REPO_ROOT/settings.json"
+if [[ ! -f "$SETTINGS_FILE" ]]; then
+  fail "settings.json not found — creating with CLAUDE_PLUGIN_ROOT"
+  printf '{\n    "env": {\n        "CLAUDE_PLUGIN_ROOT": "%s"\n    }\n}\n' "$REPO_ROOT" > "$SETTINGS_FILE"
+else
+  CURRENT_ROOT=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('$SETTINGS_FILE'))
+    print(d.get('env', {}).get('CLAUDE_PLUGIN_ROOT', ''))
+except Exception:
+    pass
+" 2>/dev/null || true)
+
+  if [[ "$CURRENT_ROOT" == "$REPO_ROOT" ]]; then
+    ok "CLAUDE_PLUGIN_ROOT = $REPO_ROOT"
+  elif [[ -z "$CURRENT_ROOT" ]]; then
+    # Inject CLAUDE_PLUGIN_ROOT into existing settings.json
+    python3 - "$SETTINGS_FILE" "$REPO_ROOT" <<'PY'
+import json, sys
+path, root = sys.argv[1], sys.argv[2]
+d = json.load(open(path))
+d.setdefault("env", {})["CLAUDE_PLUGIN_ROOT"] = root
+with open(path, "w") as f:
+    json.dump(d, f, indent=4, ensure_ascii=False)
+    f.write("\n")
+PY
+    ok "CLAUDE_PLUGIN_ROOT injected into settings.json ($REPO_ROOT)"
+  else
+    warn "CLAUDE_PLUGIN_ROOT is '$CURRENT_ROOT' (expected '$REPO_ROOT') — update settings.json manually if needed"
+  fi
+fi
+
+echo ""
+
+# ── 3. Script permissions ──────────────────────────────────────────────────────
 
 echo "-- Script permissions"
 
