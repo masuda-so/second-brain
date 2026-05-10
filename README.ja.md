@@ -31,8 +31,8 @@ Claude Code で作業
       │    ├─ worker [Stop] ──────────→ Ideas/  または  Meta/Promotions/
       │    └─ flush  [SessionEnd] ────→ References/ 自動ドラフト (L3) + Daily リンク
       │
-      └─ [SessionEnd] session-distill.sh
-           ├─ distill.py + distill-writer.py
+      └─ [SessionEnd] on-end-distill.sh
+           ├─ distill.py + distill-draft.py
            │    └─ claude -p ─────────→ Meta/Promotions/  (構造化ドラフト)
            └─ session-summarizer
                 └─ claude -p ─────────→ Daily note  ### 要約 (AI)
