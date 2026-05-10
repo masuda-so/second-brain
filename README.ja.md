@@ -1,152 +1,152 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Status: Early Access](https://img.shields.io/badge/status-early%20access-blue.svg)](#)
+[![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-lightgrey.svg)](#)
 
 [English README](./README.md)
 
 # second-brain
 
-`second-brain` は、Obsidian vault を自律的な Knowledge OS に変える Claude Code ローカルプラグインです。Claude Code で作業するだけでノートが蓄積されます。テンプレート規約に沿った構造化コンテンツが、手動キャプチャなしで自動生成されます。
+Obsidian vault を自律的な Knowledge OS に変える Claude Code ローカルプラグインです。
+このリポジトリは制御レイヤーとして機能し、セッションキャプチャ、ガードレール、構造化ドラフト、昇格ワークフローを提供します。
 
-> このリポジトリは **制御レイヤー** です。長期記憶は Obsidian vault 側にあります。
+## このプロジェクトが提供するもの
 
-## 設計原則
+`second-brain` は Claude Code セッションの活動を取り込み、Obsidian ノートを構造化して自動生成します。
+次の機能を管理します。
 
-| 原則 | 意味 |
-|------|------|
-| **Zero-friction Capture** | 明示的なメモ取り不要。Claude Code で仕事するだけで vault が育つ |
-| **Schema Enforcement** | AI 出力は [`masuda-so/Template-Vault`](https://github.com/masuda-so/Template-Vault) と [`kepano/obsidian-skills`](https://github.com/kepano/obsidian-skills) のテンプレートに沿った内容のみ生成する |
-| **Human as a Filter** | 書くのは AI、人間の役割は `Meta/Promotions/` のドラフトを承認・削除するだけ |
+- Claude Code のセッションライフサイクルイベント用フック
+- ワークフロー制御用のローカルプラグインコマンドとエージェント
+- vault を保護するガードスクリプト
+- `Ideas/`, `Meta/Promotions/`, `References/` への段階的なドラフト昇格
 
-## 仕組み
+Obsidian vault は長期記憶として残り、このリポジトリがノートの取り込み、レビュー、昇格をオーケストレーションします。
 
-3つのパイプラインが Claude Code セッションの前後で自動的に動きます。
+## なぜ便利か
 
-```
-Claude Code で作業
-      │
-      ├─ session-memory.sh (常時稼働) ─→ Meta/AI Sessions/  (生ログ)
-      │
-      ├─ harvest.py (hook 駆動)
-      │    ├─ queue  [UserPromptSubmit / PostToolUse]
-      │    ├─ worker [Stop] ──────────→ Ideas/  または  Meta/Promotions/
-      │    └─ flush  [SessionEnd] ────→ References/ 自動ドラフト (L3) + Daily リンク
-      │
-      └─ [SessionEnd] on-end-distill.sh
-           ├─ distill.py + distill-draft.py
-           │    └─ claude -p ─────────→ Meta/Promotions/  (構造化ドラフト)
-           └─ session-summarizer
-                └─ claude -p ─────────→ Daily note  ### 要約 (AI)
+- Claude Code セッションからの知識キャプチャを摩擦なく実現
+- AI 生成コンテンツを構造化 vault ルールに揃える
+- 破壊的なシェル/ファイル操作の誤実行を防止
+- 日次、週次、月次、セッション要約の自動化
+- 最終保存前にドラフトのレビューを明示化
 
-Meta/Promotions/ → [人間がレビュー] → /promote → References/  または  Ideas/
-                                                   (Projects/ は手動のみ)
-```
+## 主要な機能
 
-**昇格レベル** (harvest.py):
+- `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SessionEnd` 用のフック配線
+- `scripts/session-memory.sh` によるプロンプト・ツールキャプチャ
+- `scripts/harvest.py` のキュー/ワーカー/フラッシュパイプライン
+- `scripts/distill.py`/`scripts/distill-draft.py` によるドラフト蒸留
+- `scripts/promote.py` による昇格ワークフロー
+- `scripts/` 以下の vault 保護用ガードレールスクリプト
+- Claude Code 用プラグインマニフェスト、エージェントプロンプト、コマンド、スキル
 
-| レベル | スコア | 自動昇格先 |
-|--------|--------|-----------|
-| L1 | ≥ 3（短いセッション ≤5 プロンプトは ≥ 2） | `Ideas/` |
-| L2 | ≥ 6 | `Meta/Promotions/` |
-| L3 | ≥ 9 | `References/` 自動ドラフト + Daily リンク |
-
-## リポジトリ構成
-
-| パス | 役割 |
-|------|------|
-| [`CLAUDE.md`](./CLAUDE.md) | 運用ルール・vault 規約・AI 動作指針 |
-| [`hooks/hooks.json`](./hooks/hooks.json) | セッションライフサイクルのフック設定 |
-| [`hooks/pre-commit`](./hooks/pre-commit) | pre-commit ガード（vault アーティファクトやデバッグファイルをブロック） |
-| [`scripts/`](./scripts) | harvest・distill・セッション記録・バリデーション用スクリプト群 |
-| [`agents/`](./agents) | `claude -p` サブプロセス向けシステムプロンプト定義 |
-| [`commands/`](./commands) | スラッシュコマンド: `/status` `/logs` `/distill` `/promote` `/note` |
-| [`skills/`](./skills) | Obsidian ワークフロー向けドメインヘルパー |
-| [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) | プラグインマニフェスト |
-| [`settings.json.example`](./settings.json.example) | 環境変数テンプレート |
-
-## セットアップ
+## はじめに
 
 ### 前提条件
 
 - macOS または Linux
-- ローカルプラグインを使える Claude Code
-- `jq` と `python3`
-- Obsidian vault（[`masuda-so/Template-Vault`](https://github.com/masuda-so/Template-Vault) 構成を推奨）
+- ローカルプラグイン対応の Claude Code
+- `jq` がインストールされていること
+- `python3` が `PATH` 上にあること
+- 互換性のある Obsidian vault
 
-### 1. クローン
+### 1. リポジトリをクローン
 
 ```bash
 git clone https://github.com/masuda-so/second-brain.git
 cd second-brain
 ```
 
-### 2. init を実行
+### 2. vault パスを設定
+
+次のコマンドを実行します。
 
 ```bash
 ./scripts/init.sh "/path/to/your/Obsidian Vault"
 ```
 
-`init.sh` が行うこと:
+このセットアップでは次を行います。
 
-1. `jq` と `python3` の確認
-2. `SECOND_BRAIN_VAULT_PATH` を `.claude/settings.local.json` に書き込み、`CLAUDE.md` もパッチ
-3. スクリプトに `chmod +x`
-4. pre-commit フックのシンリンクを設置（`.git/hooks/pre-commit → hooks/pre-commit`）
-5. フックと `CLAUDE_PLUGIN_ROOT` を `.claude/settings.local.json` に登録（Plugin hooks install）
-6. `hooks/hooks.json` の検証
-7. vault フォルダ構成の確認
-8. `Templates/` へのスターターテンプレート同期
+- `jq` と `python3` を検証
+- `SECOND_BRAIN_VAULT_PATH` を `.claude/settings.local.json` に書き込み
+- `CLAUDE.md` を vault パスでパッチ
+- git pre-commit フックをインストール
+- ローカル設定にプラグインフックを登録
+- フックの配線と vault 構成を検証
+- `Templates/` にスターターテンプレートを同期
 
 ### 3. Claude Code で開く
 
-このディレクトリを Claude Code プロジェクトとして開きます。初回セッションからフックが自動で動作します。
+このリポジトリを Claude Code プロジェクトとして開きます。
+プラグインマニフェストやフック、コマンド、スキルが自動的に検出されます。
+
+### 4. ビルトインコマンドを使う
+
+Claude Code 内で次のコマンドを使います。
+
+- `/status` — プラグイン状態とセッションの健康を確認
+- `/logs` — 最近のフックとスクリプト出力を確認
+- `/promote` — `Meta/Promotions/` の承認済みドラフトを移動
+
+## リポジトリ構造
+
+| パス | 役割 |
+|------|------|
+| [`CLAUDE.md`](./CLAUDE.md) | 運用ルール、vault 規約、AI 振る舞い |
+| [`hooks/hooks.json`](./hooks/hooks.json) | セッションフックの配線 |
+| [`hooks/pre-commit`](./hooks/pre-commit) | vault 安全のための Git ガードフック |
+| [`scripts/`](./scripts) | 主要なシェルおよび Python ユーティリティ |
+| [`agents/`](./agents) | Claude エージェントプロンプト |
+| [`commands/`](./commands) | オペレーターコマンドのドキュメント |
+| [`skills/`](./skills) | Obsidian ワークフロー向けヘルパースキル |
+| [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) | Claude Code プラグインマニフェスト |
+| [`settings.json.example`](./settings.json.example) | 環境設定の例 |
+
+## 仕組み
+
+セッションライフサイクルのフックがプロンプト、ツール、編集をキャプチャし、構造化ドラフトを生成します。
+
+- `SessionStart` はセッションコンテキスト、日次/週次ノートを初期化し、キャプチャを開始
+- `UserPromptSubmit` はプロンプトを記録し、ハーベストコンテンツをキューへ追加
+- `PreToolUse` は安全でないファイル・シェル操作をブロック
+- `PostToolUse` は編集を検証し、ツール出力をキャプチャ
+- `Stop` はハーベストワーカーを実行
+- `SessionEnd` はキューをフラッシュし、セッションノートを蒸留
+
+## ノートライフサイクル
+
+- `Ideas/` — 低スコアの自動スケッチ
+- `Meta/Promotions/` — 人間のレビュー待ちドラフト
+- `References/` — 高確度の昇格済みコンテンツ
+- `Projects/` — 手動のみのプロジェクトノート
 
 ## 設定
 
-環境変数は `.claude/settings.local.json`（マシンローカル・非コミット）で管理します。
+ローカル設定は `.claude/settings.local.json` に保存します。主な環境変数:
 
-| 変数 | 用途 | 既定値 |
-|------|------|--------|
-| `SECOND_BRAIN_VAULT_PATH` | Obsidian vault の絶対パス | 必須 |
-| `SECOND_BRAIN_DAILY_DIR` | Daily ノートの保存先 | `Daily` |
-| `SECOND_BRAIN_SESSION_DIR` | AI セッションログの保存先 | `Meta/AI Sessions` |
-| `SECOND_BRAIN_CAPTURE_STRICT` | `1` でキャプチャ失敗をエラー扱い（既定は fail-open） | `0` |
+- `SECOND_BRAIN_VAULT_PATH` — 必須の絶対 vault パス
+- `SECOND_BRAIN_DAILY_DIR` — 既定は `Daily`
+- `SECOND_BRAIN_SESSION_DIR` — 既定は `Meta/AI Sessions`
+- `SECOND_BRAIN_CAPTURE_STRICT` — `1` にするとフック失敗がエラー扱い
 
-## ノートのライフサイクル
+## ヘルプとドキュメント
 
-```
-Ideas/           — 自動スケッチ、harvest_promoted: false（低スコア・未レビュー）
-Meta/Promotions/ — 人間のレビュー待ちドラフト（reviewed_status: false）
-References/      — 承認済みコンセプトノート
-Projects/        — 手動のみ（自動書き込み禁止）
-```
-
-`Meta/Promotions/` のドラフトを昇格するには Claude Code 内で `/promote` を実行します。
-
-## vault の出力先（既定）
-
-```
-Daily/YYYY-MM-DD.md           — ## AI Session にセッション要約が追記される
-Meta/AI Sessions/YYYY-MM-DD/  — セッション ID ごとの生ログ
-Meta/Promotions/draft-*.md    — レビュー待ちの自動生成ドラフト
-Ideas/                        — 低閾値で自動昇格されたアイデア
-References/                   — 高確度のコンセプトスタブ
-Weekly/YYYY-Www.md            — SessionEnd で自動作成
-Monthly/YYYY-MM.md            — SessionEnd で自動作成
-```
-
-## ヘルプ
-
-- [`CLAUDE.md`](./CLAUDE.md) — vault 規約・AI ルール・安全デフォルト
-- [`commands/status.md`](./commands/status.md) — Claude Code 内からシステム状態を確認
-- [`commands/logs.md`](./commands/logs.md) — 最近のエラーとログ確認
+- [`CLAUDE.md`](./CLAUDE.md) — 運用ガイドと vault ルール
+- [`commands/status.md`](./commands/status.md) — ステータスコマンドのリファレンス
+- [`commands/logs.md`](./commands/logs.md) — ログトラブルシュートのリファレンス
 - [`README.md`](./README.md) — 英語版
 
-問題が解決しない場合は、セットアップ手順と `./scripts/init.sh` の出力を添えて Issue を作成してください。
+問題がある場合は、セットアップ手順と `./scripts/init.sh` の出力を添えて Issue を作成してください。
 
 ## メンテナーと貢献
 
-メンテナーは **masudaso** です。Issue と Pull Request を歓迎します。変更は小さく安全に保ち、ユーザーの vault を壊さないことを優先してください。
+メンテナーは **masudaso** です。
+Issue と Pull Request を歓迎します。変更は次の条件を満たすようにしてください。
+
+- 小さくて可逆的
+- ユーザー vault に安全
+- `CLAUDE.md` のルールに沿っている
+- セットアップやオペレーター動作に影響する場合はドキュメント化されている
 
 ## ライセンス
 
-**MIT License** — 詳細は [`LICENSE`](./LICENSE) を参照してください。
+**MIT License** です。詳細は [`LICENSE`](./LICENSE) を参照してください。
