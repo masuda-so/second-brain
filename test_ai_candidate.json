@@ -1,0 +1,5 @@
+{
+  "candidates": [
+    {"signal": "React hook state mismatch error in useEffect", "destination": "References/react-hook-error.md"}
+  ]
+}
