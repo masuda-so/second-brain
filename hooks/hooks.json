@@ -5,11 +5,19 @@
                 "hooks": [
                     {
                         "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/daily-note.sh"
+                    },
+                    {
+                        "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-memory.sh start"
                     },
                     {
                         "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/project-state.sh"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/weekly-draft.sh"
                     }
                 ]
             }
@@ -48,6 +56,10 @@
                     {
                         "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-readonly-query.sh"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/protect-vault-rm.sh"
                     }
                 ]
             }
@@ -100,6 +112,10 @@
                     {
                         "type": "command",
                         "command": "${CLAUDE_PLUGIN_ROOT}/scripts/harvest.py flush"
+                    },
+                    {
+                        "type": "command",
+                        "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-distill.sh"
                     }
                 ]
             }
