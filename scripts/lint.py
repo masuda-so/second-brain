@@ -87,7 +87,7 @@ class Issue:
     check: str             # orphan_pages, broken_links, etc.
     path: str              # relative vault path
     message: str
-    fixable: bool = False  # can lint fix auto-repair this?
+    fixable: bool = False  # whether this issue can be auto-repaired by lint fix
 
     def to_dict(self) -> dict:
         return {
