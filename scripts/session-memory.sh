@@ -154,13 +154,16 @@ ensure_daily_note() {
 
   cat >"$DAILY_NOTE_PATH" <<EOF
 ---
+type: daily
 date: $TODAY
-tags: [daily]
+tags:
+  - journal
 ---
-## Focus
-## Wins
-## Blockers
-## Notes
+## 今日のフォーカス
+## メモ
+> [!note] 振り返り
+## フォローアップ
+## 関連ノート
 ## AI Session
 
 EOF
