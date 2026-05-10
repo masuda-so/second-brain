@@ -55,6 +55,10 @@ IMPORTANCE_RULES: list[tuple[int, str]] = [
         r"we\s*will|use\s*this|going\s*forward|from\s*now\s*on|convention"),
     (2, r"エラー修正|バグ修正|fix|fixed|resolved|workaround|root\s*cause|原因|解決"),
     (2, r"判明|わかった|発見|気づき|insight|learned|found\s*that|turns\s*out|discovered"),
+    # Synthesis: answers that cross-reference multiple vault notes or synthesize knowledge
+    (3, r"\[\[[^\]]+\]\].*\[\[[^\]]+\]\]"),  # 2+ wikilinks in same content
+    (2, r"まとめると|総合すると|in\s*summary|synthesiz|comparing|比較すると|"
+        r"整理すると|結論として|overall|across\s+these|both.*and"),
 ]
 
 # Bash commands that are pure noise — never candidate-ify their output
@@ -915,9 +919,9 @@ def cmd_flush(vault: pathlib.Path, conn: sqlite3.Connection,
         else:
             l3_lines.append(f"  - [ ] **{title}** (score {r['importance']}) — draft manually")
 
-    lines = [f"- {time_label} Harvest: +{promoted} Ideas, +{staged} staged, +{l3_drafted} References drafted"]
+    lines = [f"- {time_label} [harvest] +{promoted} Ideas, +{staged} staged, +{l3_drafted} References drafted"]
     if l3_lines:
-        lines.append(f"- {time_label} References:")
+        lines.append(f"- {time_label} [harvest:l3] References:")
         lines.extend(l3_lines)
 
     try:
