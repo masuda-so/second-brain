@@ -53,6 +53,22 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 - Treat destructive database operations as disallowed unless the user explicitly sets up a separate write-capable path.
 - If a hook or validation script fails, surface the problem clearly rather than silently proceeding.
 
+## Branch Protection
+
+`main` is protected by a GitHub Ruleset (`protect-main`, ID 14985776).
+
+| Rule | Effect |
+|------|--------|
+| Require pull request | Direct pushes to `main` are blocked. All changes require a PR. |
+| Required status checks (strict) | CI job "Validate hooks, scripts, and init" must pass. Branch must be up-to-date with `main`. |
+| Required linear history | Only squash-merge or rebase allowed. No merge commits. |
+| Block force pushes | `git push --force origin main` is rejected. |
+| Block deletion | `main` cannot be deleted. |
+
+- Required approvals: 0 (sole-owner repo; CI is the quality gate). Increase to 1 when a second contributor joins.
+- No bypass actors configured. For emergencies, temporarily set enforcement to `disabled` via `gh api --method PUT /repos/masuda-so/second-brain/rulesets/14985776`.
+- The required status check context `"Validate hooks, scripts, and init"` is coupled to the `name:` field on line 10 of `.github/workflows/ci.yml`. Renaming that job without updating the ruleset will block all merges.
+
 ---
 
 ## Vault
