@@ -170,7 +170,8 @@ def find_active_project_slug(vault: pathlib.Path, cwd: pathlib.Path) -> str | No
     repo_name = ""
     try:
         git_root = subprocess.run(
-            ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(cwd),
             check=False,
             capture_output=True,
             text=True,
