@@ -161,4 +161,63 @@ finally:
     lf.close()
 PY
 
+# ── Phase 2: generate session summary via claude -p ──────────────────────────
+
+SUMMARIZER_AGENT="$REPO_ROOT/agents/session-summarizer.md"
+
+if command -v claude >/dev/null 2>&1 && [[ -f "$SESSION_NOTE" ]] && [[ -f "$SUMMARIZER_AGENT" ]]; then
+  SYSTEM_PROMPT="$(awk 'BEGIN{c=0} /^---/{c++;next} c>=2{print}' "$SUMMARIZER_AGENT")"
+  SESSION_CONTENT="$(head -c 4000 "$SESSION_NOTE" 2>/dev/null || true)"
+
+  if [[ -n "$SESSION_CONTENT" ]]; then
+    AI_SUMMARY="$(echo "$SESSION_CONTENT" | \
+      claude -p --system-prompt "$SYSTEM_PROMPT" 2>/dev/null || true)"
+
+    if [[ -n "$AI_SUMMARY" ]]; then
+      SUMMARY_BLOCK="$(printf '### 要約 (AI)\n%s' "$AI_SUMMARY")"
+
+      python3 - "$DAILY_NOTE" "$SUMMARY_BLOCK" <<'PY'
+import sys, pathlib, fcntl, time
+
+daily_path = pathlib.Path(sys.argv[1])
+block      = sys.argv[2]
+
+lock_path = daily_path.parent / f".{daily_path.name}.lock"
+lf = open(lock_path, "w")
+acquired = False
+try:
+    try:
+        fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        acquired = True
+    except OSError:
+        for _ in range(100):
+            time.sleep(0.05)
+            try:
+                fcntl.flock(lf, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+                break
+            except OSError:
+                pass
+    if acquired:
+        text = daily_path.read_text()
+        heading = "## AI Session"
+        if heading not in text:
+            sys.exit(0)
+        if "### 要約 (AI)" in text:
+            sys.exit(0)
+        idx = text.rindex(heading) + len(heading)
+        next_h2 = text.find("\n## ", idx)
+        insert_at = next_h2 if next_h2 != -1 else len(text)
+        entry = f"\n\n{block}\n"
+        text = text[:insert_at] + entry + text[insert_at:]
+        daily_path.write_text(text)
+finally:
+    if acquired:
+        fcntl.flock(lf, fcntl.LOCK_UN)
+    lf.close()
+PY
+    fi
+  fi
+fi
+
 exit 0
