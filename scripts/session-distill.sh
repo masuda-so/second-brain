@@ -129,7 +129,7 @@ count      = sys.argv[4]
 summary    = sys.argv[5]
 
 entry = (
-    f"\n- {time_label} Distill candidates ({count}) <!-- {marker} -->\n"
+    f"\n- {time_label} [distill] candidates ({count}) <!-- {marker} -->\n"
     f"{summary}\n"
 )
 
