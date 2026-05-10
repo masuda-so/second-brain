@@ -1,61 +1,163 @@
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Status: Early Access](https://img.shields.io/badge/status-early%20access-blue.svg)](#)
+
+[日本語版はこちら](./README.ja.md)
+
 # second-brain
 
-`second-brain` is a Claude Code plugin repository for running an Obsidian-backed Knowledge OS: a guarded external cognition stack where notes act as long-term memory, Claude Code acts as executive function, and hooks act as a deterministic nervous system.
+`second-brain` is a local Claude Code plugin repository for running an Obsidian-backed Knowledge OS. It gives Claude Code a safer control plane for external memory: live session capture, lightweight guardrails, and reusable operator workflows that write useful context back into your vault.
 
-This version adds live session capture so notes keep accumulating while Claude Code is working, not only after the session ends.
+> This repository is the **control layer**. Your Obsidian vault remains the long-term memory store.
 
-The current defaults are designed to fit [`masuda-so/Template-Vault`](https://github.com/masuda-so/Template-Vault): `Daily/` already exists for journal capture, and `Meta/` is the natural place for detailed AI session logs.
+## What the project does
 
-## Core Model
+`second-brain` connects three pieces into one workflow:
 
-- Obsidian vault: durable long-term memory
-- Claude Code: planning, execution, and summarization
-- Context window and scratch buffers: working memory
-- Hooks and scripts: reflexes, safety gates, and post-action checks
+- **Obsidian** stores durable notes and project memory
+- **Claude Code** handles planning, execution, and summarization
+- **Hooks and scripts** add deterministic safety checks and session capture
 
-## Repository Layout
+The default setup is designed to work well with [`masuda-so/Template-Vault`](https://github.com/masuda-so/Template-Vault), especially its `Daily/` and `Meta/` structure.
 
-- [`CLAUDE.md`](./CLAUDE.md): operating constitution for the Knowledge OS
-- [`hooks/hooks.json`](./hooks/hooks.json): Claude Code hook wiring
-- [`scripts/`](./scripts): guardrail and validation scripts used by hooks
-- [`commands/`](./commands): reusable operational commands
-- [`agents/`](./agents): specialist agents for review, security, debugging, and analysis
-- [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json): local plugin manifest
-- [`settings.json`](./settings.json): Claude Code environment flags
+## Why this project is useful
 
-## What Works Today
+Key benefits for developers and knowledge workers:
 
-- Blocks edits to protected files such as `.git/` and common secret files
-- Rejects write-capable SQL commands when database tools are invoked from Bash
-- Runs lightweight syntax validation after editing `json`, `sh`, and `py` files
-- Creates or reuses `Daily/YYYY-MM-DD.md` and appends a live `## AI Session` trail during the session
-- Creates `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md` for detailed per-session capture
-- Aligns with the folder model used by `Template-Vault`
-- Provides starter commands and specialist agents for operating the system
+- **Live session capture** — prompts, tool events, and closeout notes are appended while Claude Code is working
+- **Guarded automation** — protected files are blocked and write-capable SQL is rejected from Bash flows
+- **Lightweight validation** — edited `json`, `sh`, and `py` files are syntax-checked automatically
+- **Vault-friendly defaults** — notes land in predictable places such as `Daily/` and `Meta/AI Sessions/`
+- **Operator tooling included** — reusable `commands/`, `agents/`, and `skills/` help with debugging, review, and maintenance
 
-## Session Flow
+## Repository layout
 
-- `SessionStart`: create the daily note if needed and open a session note
-- `UserPromptSubmit`: append a concise line to `Daily/... ## AI Session` and the full prompt to the session note
-- `PostToolUse` for `Write|Edit|MultiEdit`: append edited file activity to the session note
-- `Stop`: append a closing line to the daily note and session note
+| Path | Purpose |
+| --- | --- |
+| [`CLAUDE.md`](./CLAUDE.md) | Operating constitution and vault rules |
+| [`hooks/hooks.json`](./hooks/hooks.json) | Hook wiring for session lifecycle and safety gates |
+| [`scripts/`](./scripts) | Shell and Python utilities for validation, capture, and initialization |
+| [`commands/`](./commands) | Reusable operational prompts such as status and log review |
+| [`agents/`](./agents) | Specialist agents for review, security, debugging, and analysis |
+| [`skills/`](./skills) | Domain-specific helpers for Obsidian and note workflows |
+| [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) | Local plugin manifest |
+| [`settings.json`](./settings.json) | Environment configuration for your vault integration |
+
+## Getting started
+
+### Prerequisites
+
+Before setup, make sure you have:
+
+- **macOS or Linux**
+- **Claude Code** with local plugin support
+- **`jq`** and **`python3`** available on your `PATH`
+- An **Obsidian vault** (a local clone of Template-Vault is the recommended default)
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/masuda-so/second-brain.git
+cd second-brain
+```
+
+### 2. Configure your vault path
+
+If `settings.json` does not exist yet, create it from the example:
+
+```bash
+cp settings.json.example settings.json
+```
+
+Then set `SECOND_BRAIN_VAULT_PATH` to your local vault path in [`settings.json`](./settings.json), or pass the path directly to the init script.
+
+### 3. Run the setup check
+
+```bash
+./scripts/init.sh "/path/to/your/Obsidian Vault"
+```
+
+The init script will:
+
+1. verify `jq` and `python3`
+2. ensure scripts are executable
+3. validate [`hooks/hooks.json`](./hooks/hooks.json)
+4. resolve your vault path
+5. check expected vault folders
+6. sync starter templates into `Templates/`
 
 ## Configuration
 
 The plugin reads these environment variables from [`settings.json`](./settings.json):
 
-- `SECOND_BRAIN_VAULT_PATH`
-- `SECOND_BRAIN_DAILY_DIR`
-- `SECOND_BRAIN_SESSION_DIR`
-- `SECOND_BRAIN_CAPTURE_STRICT`
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `SECOND_BRAIN_VAULT_PATH` | Absolute path to your Obsidian vault | required |
+| `SECOND_BRAIN_DAILY_DIR` | Folder used for daily notes | `Daily` |
+| `SECOND_BRAIN_SESSION_DIR` | Folder used for detailed AI session logs | `Meta/AI Sessions` |
+| `SECOND_BRAIN_CAPTURE_STRICT` | When set to `1`, capture problems fail the hook instead of failing open | `0` |
 
-With the current defaults, session notes accumulate in the Obsidian vault at:
+## Usage examples
 
-- `Daily/YYYY-MM-DD.md`
-- `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md`
+### Run one-time setup
 
-## Template-Vault
+```bash
+./scripts/init.sh "/Users/you/Documents/Obsidian Vault"
+```
 
-If your actual vault is a local clone of [`Template-Vault`](https://github.com/masuda-so/Template-Vault), point `SECOND_BRAIN_VAULT_PATH` at that clone and the plugin will append into the existing `Daily/` and `Meta/` structure without needing extra folders up front.
+### Inspect system health from Claude Code
 
-This repository is the control plane, not the vault itself. Its job is to make the AI side of the system safer, more legible, and easier to evolve.
+Use the prompt in [`commands/status.md`](./commands/status.md) to review:
+
+- hook coverage
+- config drift
+- incomplete files
+- operational risks
+
+### Review recent issues or missing logs
+
+Use [`commands/logs.md`](./commands/logs.md) to inspect recent failures or to confirm when extra logging is needed.
+
+### Expected vault output
+
+With the default configuration, active sessions will create or update paths like:
+
+```text
+Daily/2026-04-05.md
+Meta/AI Sessions/2026-04-05/<session-id>.md
+Meta/Promotions/
+```
+
+## Session flow
+
+The default hook lifecycle is:
+
+- **`SessionStart`** → start or reopen the daily note and session note
+- **`UserPromptSubmit`** → append a concise summary to `## AI Session` and the full prompt to the session note
+- **`PostToolUse`** → record file edits and queue note harvesting
+- **`Stop` / `SessionEnd`** → checkpoint promotions and append closeout context
+
+## Where to get help
+
+If you are getting started or debugging setup, use these resources first:
+
+- [`CLAUDE.md`](./CLAUDE.md) — operating model, vault conventions, and safety defaults
+- [`commands/status.md`](./commands/status.md) — quick operational review
+- [`commands/logs.md`](./commands/logs.md) — recent failures and logging guidance
+- [`README.ja.md`](./README.ja.md) — Japanese overview
+
+If something still looks wrong, open an issue in this repository with your setup steps and the output from `./scripts/init.sh`.
+
+## Maintainers and contributions
+
+Maintained by **masudaso**.
+
+Contributions are welcome through issues and pull requests. Until a dedicated `CONTRIBUTING.md` is added, please keep changes:
+
+- **small and reversible**
+- aligned with the rules in [`CLAUDE.md`](./CLAUDE.md)
+- safe for user vaults and secret material
+- documented when they change operator behavior or setup steps
+
+## License
+
+Released under the **MIT License**. See [`LICENSE`](./LICENSE) for details.
