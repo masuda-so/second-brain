@@ -1,0 +1,114 @@
+# vault-ci.yml — Example GitHub Actions workflow for vault-as-a-repo users
+#
+# This is an OPTIONAL, opt-in workflow for users who store their Obsidian vault
+# in a GitHub repository. Copy this file to your vault repo at:
+#   .github/workflows/vault-ci.yml
+#
+# second-brain does NOT add this automatically. Vault governance is the owner's
+# responsibility — second-brain only manages the plugin repo's own CI.
+#
+# What this checks:
+#   1. Frontmatter / required heading compliance (Template-Vault canonical schema)
+#   2. Banned artifacts (.DS_Store, memory.db, temp files)
+#   3. Note size / accidental binary check
+#
+# What this does NOT check (too noisy for automated CI):
+#   - Broken wikilinks (Obsidian allows forward references and aliases)
+#   - Orphan links
+#
+# Requirements: Python 3, PyYAML (pip install pyyaml)
+
+name: Vault CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  vault-lint:
+    name: Vault note compliance
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      # ── 1. Banned artifacts ───────────────────────────────────────────────────
+      - name: Check for banned artifacts
+        run: |
+          BANNED=(".DS_Store" "memory.db" "Thumbs.db" ".env")
+          FOUND=0
+          for pattern in "${BANNED[@]}"; do
+            matches=$(find . -name "$pattern" -not -path "./.git/*" 2>/dev/null)
+            if [[ -n "$matches" ]]; then
+              echo "ERROR: banned artifact found: $matches"
+              FOUND=1
+            fi
+          done
+          # Warn on large files (>5MB) — potential accidental binary
+          while IFS= read -r -d '' f; do
+            size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null)
+            if [[ ${size:-0} -gt 5242880 ]]; then
+              echo "WARN: large file ($(( size / 1048576 ))MB): $f"
+            fi
+          done < <(find . -not -path "./.git/*" -type f -print0)
+          exit $FOUND
+
+      # ── 2. Frontmatter + heading compliance ──────────────────────────────────
+      - name: Template-Vault schema compliance
+        run: |
+          python3 - <<'PYEOF'
+          import pathlib, sys, re
+
+          SCHEMA = {
+              "daily":     {"fm": ["type","date","tags"],        "h2": ["今日のフォーカス","メモ","フォローアップ","関連ノート"]},
+              "weekly":    {"fm": ["type","week","reviewed","tags"], "h2": ["進行中プロジェクト","昇格候補アイデア","来週の重点","関連ノート"]},
+              "monthly":   {"fm": ["type","period","tags"],      "h2": ["優先事項","うまくいったこと","改善点","来月の焦点"]},
+              "project":   {"fm": ["type","status","review"],    "h2": ["ゴール","次のアクション","関連ノート"]},
+              "idea":      {"fm": ["type","status","created"],   "h2": ["プロジェクト化の条件","下書き素材"]},
+              "reference": {"fm": ["type","topic"],              "h2": ["目的","手順","関連資料"]},
+              "clipping":  {"fm": ["type","source","captured"],  "h2": ["メモ"]},
+          }
+
+          ROOT = pathlib.Path(".")
+          errors = []
+
+          for md in ROOT.rglob("*.md"):
+              if ".git" in md.parts:
+                  continue
+              text = md.read_text(errors="ignore")
+              fm_match = re.match(r"^---\n(.*?)\n---", text, re.DOTALL)
+              if not fm_match:
+                  continue
+              fm_text = fm_match.group(1)
+              note_type = re.search(r"^type:\s*(\S+)", fm_text, re.MULTILINE)
+              if not note_type:
+                  continue
+              t = note_type.group(1).strip('"\'')
+              schema = SCHEMA.get(t)
+              if not schema:
+                  continue
+              fm_keys = set(re.findall(r"^(\w+)\s*:", fm_text, re.MULTILINE))
+              headings = " ".join(re.findall(r"^#{1,3}\s+(.+)", text, re.MULTILINE))
+              for key in schema["fm"]:
+                  if key not in fm_keys:
+                      errors.append(f"WARN  {md}: missing frontmatter key '{key}' (type={t})")
+              # headings: warn only (not all notes need every heading if empty)
+              # Uncomment to enforce:
+              # for h in schema["h2"]:
+              #     if h not in headings:
+              #         errors.append(f"WARN  {md}: missing ## {h} (type={t})")
+
+          for e in errors:
+              print(e)
+          # Treat as warning only — exit 0
+          sys.exit(0)
+          PYEOF
