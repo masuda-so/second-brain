@@ -160,6 +160,12 @@ ERROR_RE = re.compile(
 )
 CONFIG_RE = re.compile(r"設定|config|rule|ルール|policy|フック設定|hook\s*config", re.I)
 PROC_RE = re.compile(r"手順|操作|実行|run|deploy|install|setup", re.I)
+SYNTHESIS_RE = re.compile(
+    r"\[\[[^\]]+\]\].*\[\[[^\]]+\]\]"   # 2+ wikilinks in same content
+    r"|まとめると|総合すると|in\s*summary|synthesiz|comparing|比較すると"
+    r"|整理すると|結論として|overall|across\s+these|both.*and",
+    re.I,
+)
 
 
 def generate_questions(signal: str) -> str:
@@ -218,6 +224,9 @@ def build_reference_draft(
             f"<!-- 上記の論点を踏まえて再利用条件を記述してください -->"
         )
 
+    is_synthesis = bool(SYNTHESIS_RE.search(signal))
+    synthesis_line = "\nsynthesis: true" if is_synthesis else ""
+
     return f"""\
 ---
 title: {title}
@@ -228,7 +237,7 @@ reviewed_status: false
 source_session: {session_id}
 source_date: {date}
 promotion_target: {destination}
-promotion_action: {action}
+promotion_action: {action}{synthesis_line}
 tags: []
 ---
 {body_section}
