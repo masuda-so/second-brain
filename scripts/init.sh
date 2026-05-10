@@ -371,16 +371,22 @@ echo "-- Summary"
 echo "   Templates synced: $synced, skipped: $skipped"
 echo ""
 
-# ── 7. Vault CI (optional, for vault-as-a-repo users) ─────────────────────────
+# ── 7. Vault CI (opt-in only: set SECOND_BRAIN_INSTALL_VAULT_CI=1 or pass --install-vault-ci) ──
 
 echo "-- Vault CI"
 
-VAULT_GIT="$VAULT_PATH/.git"
+INSTALL_VAULT_CI="${SECOND_BRAIN_INSTALL_VAULT_CI:-0}"
+for _arg in "$@"; do
+  [[ "$_arg" == "--install-vault-ci" ]] && INSTALL_VAULT_CI=1
+done
+
 VAULT_WORKFLOWS="$VAULT_PATH/.github/workflows"
 EXAMPLE_CI="$REPO_ROOT/docs/examples/vault-ci.yml"
 VAULT_CI_TARGET="$VAULT_WORKFLOWS/vault-ci.yml"
 
-if [[ ! -d "$VAULT_GIT" ]]; then
+if [[ "$INSTALL_VAULT_CI" != "1" ]]; then
+  skip "vault CI not requested — pass --install-vault-ci or set SECOND_BRAIN_INSTALL_VAULT_CI=1 to opt in"
+elif ! git -C "$VAULT_PATH" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   skip "vault is not a git repo — skipping vault CI setup"
 elif [[ ! -f "$EXAMPLE_CI" ]]; then
   warn "docs/examples/vault-ci.yml not found — skipping vault CI setup"
