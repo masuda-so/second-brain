@@ -77,6 +77,14 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 | `Canvases/` | Spatial reasoning | Visual maps and concept diagrams |
 | `Sandbox/` | Training environment | Obsidian onboarding and safe experimentation |
 
+### second-brain Internal Directories (not Template-Vault canonical)
+
+| Directory | Purpose |
+|-----------|---------|
+| `Meta/Promotions/` | Harvest L2 staging queue — notes automatically promoted from candidates but not yet reviewed. `type: staged`. These are second-brain control-plane artifacts, not canonical vault notes. Manually promote to `References/` or `Projects/` after review. |
+| `Meta/AI Sessions/` | Live session capture (prompts, tool events, closeout). One file per session. Not meant for long-term curation — archive or delete after distillation. |
+| `Meta/.cache/` | SQLite sidecar (`memory.db`). Ephemeral — safe to delete; will be recreated. |
+
 ## Note Templates
 
 Source: [masuda-so/Template-Vault](https://github.com/masuda-so/Template-Vault)
