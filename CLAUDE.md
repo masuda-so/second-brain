@@ -8,7 +8,7 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 
 ## Cognitive Mapping
 
-- Long-term memory: the Obsidian vault and its durable notes, especially structures such as `Daily/`, `Projects/`, `Bases/`, `Areas/`, `Resources/`, and `Archive/`.
+- Long-term memory: the Obsidian vault and its durable notes, especially structures such as `Daily/`, `Weekly/`, `Monthly/`, `Projects/`, `References/`, `Clippings/`, `Ideas/`, `Meta/`, `Bases/`, `Canvases/`, and `Sandbox/`.
 - Working memory: the current Claude Code context window, active task notes, and any temporary scratch buffers created during a task.
 - Executive function: planning, decomposition, task execution, validation, and summarization performed by Claude Code.
 - Nervous system: hooks and validation scripts that intercept risky actions before or after tools run.
@@ -75,6 +75,7 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 | `Clippings/` | Sensory buffer | Web clips awaiting processing |
 | `Meta/` | Metacognition | Vault rules, system notes, templates |
 | `Canvases/` | Spatial reasoning | Visual maps and concept diagrams |
+| `Sandbox/` | Training environment | Obsidian onboarding and safe experimentation |
 
 ## Note Templates
 
@@ -148,7 +149,7 @@ Recommended YAML frontmatter properties for notes consumed by each Base:
 - Prefer append over rewrite for Daily and Project notes.
 - Route all new captures to `Daily/YYYY-MM-DD.md ## Notes` first.
 - Distill durable knowledge to `References/` or the appropriate Base after the session.
-- Never delete vault content — use `#archived` tag or move to `Archive/`.
+- Never delete vault content — use `#archived` until the vault defines a dedicated archive location.
 - AI session learnings -> append to `Daily/YYYY-MM-DD.md ## AI Session`.
 - Detailed live capture -> `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md`.
 
@@ -168,6 +169,6 @@ Durable distillations: `References/` or the appropriate Base.
 ## Note Lifecycle
 
 ```
-Clippings/ / Ideas/    →    Daily/ (tagged + linked)    →    References/ or Base    →    Archive/
-   (capture)                     (process)                       (distill)              (#archived)
+Clippings/ / Ideas/    →    Daily/ (tagged + linked)    →    References/ or Base    →    tagged as #archived when no longer active
+   (capture)                     (process)                       (distill)              
 ```

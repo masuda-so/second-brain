@@ -4,6 +4,8 @@
 
 This version adds live session capture so notes keep accumulating while Claude Code is working, not only after the session ends.
 
+The current defaults are designed to fit [`masuda-so/Template-Vault`](https://github.com/masuda-so/Template-Vault): `Daily/` already exists for journal capture, and `Meta/` is the natural place for detailed AI session logs.
+
 ## Core Model
 
 - Obsidian vault: durable long-term memory
@@ -28,6 +30,7 @@ This version adds live session capture so notes keep accumulating while Claude C
 - Runs lightweight syntax validation after editing `json`, `sh`, and `py` files
 - Creates or reuses `Daily/YYYY-MM-DD.md` and appends a live `## AI Session` trail during the session
 - Creates `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md` for detailed per-session capture
+- Aligns with the folder model used by `Template-Vault`
 - Provides starter commands and specialist agents for operating the system
 
 ## Session Flow
@@ -50,5 +53,9 @@ With the current defaults, session notes accumulate in the Obsidian vault at:
 
 - `Daily/YYYY-MM-DD.md`
 - `Meta/AI Sessions/YYYY-MM-DD/<session-id>.md`
+
+## Template-Vault
+
+If your actual vault is a local clone of [`Template-Vault`](https://github.com/masuda-so/Template-Vault), point `SECOND_BRAIN_VAULT_PATH` at that clone and the plugin will append into the existing `Daily/` and `Meta/` structure without needing extra folders up front.
 
 This repository is the control plane, not the vault itself. Its job is to make the AI side of the system safer, more legible, and easier to evolve.
