@@ -78,8 +78,15 @@ NOISE_RE = re.compile(
     r"|tmux.bridge\s+(read|type|keys|send)"          # tmux-bridge操作コマンド
     r"|\[tmux-bridge\s+from:"                        # tmux-bridge relay header
     r"|【claude\s*[→→]\s*(codex|gemini)】"           # エージェント間通信ヘッダー
-    r"|【(codex|gemini)\s*[→→]\s*claude】",
+    r"|【(codex|gemini)\s*[→→]\s*claude】"
+    r"|<task-notification>",                          # Claude Code internal task XML
     re.IGNORECASE,
+)
+
+# Vault directories that are ephemeral/session artifacts — never harvest writes from these
+VAULT_EPHEMERAL_DIRS = (
+    "Daily/", "Weekly/", "Monthly/",
+    "Meta/AI Sessions/", "Meta/Promotions/", "Meta/.cache/",
 )
 
 SKIP_TITLES = {"", "untitled", "note", "notes", "misc", "todo"}
@@ -647,6 +654,27 @@ def promote_l2(vault: pathlib.Path, conn: sqlite3.Connection) -> int:
 
 # ── Subcommands ───────────────────────────────────────────────────────────────
 
+def _is_harvestable_write(fp: str, vault: pathlib.Path) -> bool:
+    """Return True if a write event to file_path should be harvested.
+
+    Rules:
+    - Vault writes: only canonical knowledge directories with .md extension.
+      Skip ephemeral dirs (Daily/, Meta/AI Sessions/, Meta/Promotions/, etc.)
+    - Repo writes: only .md files (docs, READMEs). Skip .py/.sh/.json/.yaml — code
+      is the artifact, not a knowledge note.
+    """
+    if not fp:
+        return False
+    vault_str = str(vault).rstrip("/") + "/"
+    if fp.startswith(vault_str):
+        rel = fp[len(vault_str):]
+        if not fp.endswith(".md"):
+            return False
+        return not any(rel.startswith(d) for d in VAULT_EPHEMERAL_DIRS)
+    # Repo file: only markdown
+    return fp.endswith(".md")
+
+
 def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
                 session_id: str) -> None:
     try:
@@ -677,13 +705,13 @@ def cmd_extract(data: str, vault: pathlib.Path, conn: sqlite3.Connection,
     if tool_name in ("Write", "Edit"):
         fp = tool_input.get("file_path", "")
         body = tool_input.get("content", tool_input.get("new_string", ""))
-        if body and len(body) > 40:
+        if body and len(body) > 40 and _is_harvestable_write(fp, vault):
             pieces.append((f"write:{fp}", body[:MAX_CONTENT_LEN]))
     elif tool_name == "MultiEdit":
         fp = tool_input.get("file_path", "")
         for edit in tool_input.get("edits", []):
             body = edit.get("new_string", "")
-            if body and len(body) > 40:
+            if body and len(body) > 40 and _is_harvestable_write(fp, vault):
                 pieces.append((f"write:{fp}", body[:MAX_CONTENT_LEN]))
 
     if tool_name == "Bash":
