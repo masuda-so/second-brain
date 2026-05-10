@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Self-contained tests for scripts/daily-note.sh.
+# Self-contained tests for scripts/on-start-daily.sh.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT_UNDER_TEST="$ROOT_DIR/scripts/daily-note.sh"
+SCRIPT_UNDER_TEST="$ROOT_DIR/scripts/on-start-daily.sh"
 
 fail() {
   echo "FAIL: $*" >&2

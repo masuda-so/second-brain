@@ -1,9 +1,10 @@
 #!/bin/bash
-# session-distill.sh — SessionEnd hook: auto-distill candidates into Daily note.
+# on-end-distill.sh — SessionEnd hook: auto-distill candidates into Daily note.
 #
-# Calls distill.py (dry-run) and appends a compact candidate summary under
-# Daily/YYYY-MM-DD.md ## AI Session. Does NOT write to References/ or Projects/
-# — that remains a human-approved step via /distill.
+# Calls distill.py (dry-run) and distill-draft.py, then appends a compact
+# candidate summary under Daily/YYYY-MM-DD.md ## AI Session.
+# Does NOT write to References/ or Projects/ — that remains a human-approved
+# step via /distill.
 #
 # Idempotent: skips if the session was already summarized in the Daily note.
 # Always exits 0 (fail-open).
@@ -14,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INPUT="$(cat 2>/dev/null || true)"
 
-warn() { echo "second-brain: session-distill: $*" >&2; }
+warn() { echo "second-brain: on-end-distill: $*" >&2; }
 bail() { warn "$*"; exit 0; }
 
 command -v python3 >/dev/null 2>&1 || bail "python3 required"
@@ -72,7 +73,7 @@ fi
 
 WRITER_JSON="$(printf '%s' "$CANDIDATES_JSON" | \
   SECOND_BRAIN_VAULT_PATH="$VAULT_PATH" \
-  python3 "$SCRIPT_DIR/distill-writer.py" \
+  python3 "$SCRIPT_DIR/distill-draft.py" \
     --session-id "$SAFE_SESSION_ID" \
     --date "$TODAY" 2>/dev/null)" || true
 
