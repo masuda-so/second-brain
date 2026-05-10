@@ -106,9 +106,30 @@ if [[ -n "$CURRENT_VAULT" && "$CURRENT_VAULT" != "$PLACEHOLDER" && -d "$CURRENT_
   ok "SECOND_BRAIN_VAULT_PATH = $CURRENT_VAULT"
 elif [[ -n "$VAULT_PATH_ARG" ]]; then
   _set_vault_path_in_settings "$LOCAL_SETTINGS" "$VAULT_PATH_ARG"
+  CURRENT_VAULT="$VAULT_PATH_ARG"
   ok "SECOND_BRAIN_VAULT_PATH set to: $VAULT_PATH_ARG"
 else
   fail "SECOND_BRAIN_VAULT_PATH not configured — run: second-brain:init /your/vault/path"
+fi
+
+# ── 2b. Sync vault path into CLAUDE.md ────────────────────────────────────────
+# CLAUDE.md is loaded as project instructions by Claude Code, so the Location:
+# line must reflect THIS user's vault — not the repo author's path.
+# init.sh patches it idempotently whenever a valid vault path is known.
+
+if [[ -n "$CURRENT_VAULT" && -d "$CURRENT_VAULT" ]]; then
+  CLAUDE_MD="$REPO_ROOT/CLAUDE.md"
+  if grep -q "^- Location:" "$CLAUDE_MD" 2>/dev/null; then
+    current_loc=$(grep "^- Location:" "$CLAUDE_MD" | sed "s|^- Location: \`\(.*\)\`|\1|")
+    if [[ "$current_loc" != "$CURRENT_VAULT" ]]; then
+      sed -i.bak "s|^- Location: \`.*\`|- Location: \`$CURRENT_VAULT\`|" "$CLAUDE_MD" && rm -f "${CLAUDE_MD}.bak"
+      ok "CLAUDE.md Location updated → $CURRENT_VAULT"
+    else
+      ok "CLAUDE.md Location already correct"
+    fi
+  else
+    warn "CLAUDE.md: Location: line not found — skipping"
+  fi
 fi
 
 echo ""

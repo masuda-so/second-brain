@@ -57,7 +57,7 @@ Treat the user's vault as external memory, not disposable scratch space. The sys
 
 ## Vault
 
-- Location: `/Users/masudaso/Documents/Obsidian Vault/`
+- Location: `/Users/masudaso/Documents/Obsidian Vault`
 - This section serves as the Knowledge OS constitution for that vault.
 - Session capture: accumulate prompts and key events during the session, then leave the distilled trail in `Daily/YYYY-MM-DD.md` under the `## AI Session` heading.
 - All ambient knowledge — personal preferences, project learnings, AI-generated insights — goes to the vault, not Claude auto memory.
