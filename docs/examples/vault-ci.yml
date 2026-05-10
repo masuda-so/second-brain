@@ -8,9 +8,11 @@
 # responsibility — second-brain only manages the plugin repo's own CI.
 #
 # What this checks:
-#   1. Frontmatter / required heading compliance (Template-Vault canonical schema)
-#   2. Banned artifacts (.DS_Store, memory.db, temp files)
-#   3. Note size / accidental binary check
+#   1. Banned artifacts (.DS_Store, memory.db, temp files) — fails CI if found
+#   2. Frontmatter key compliance (Template-Vault canonical schema) — WARNING ONLY, exits 0
+#      Missing frontmatter keys are printed but do not block the build.
+#      Heading enforcement is commented out by default (too noisy for most vaults).
+#   3. Note size / accidental binary check — warning only
 #
 # What this does NOT check (too noisy for automated CI):
 #   - Broken wikilinks (Obsidian allows forward references and aliases)
@@ -109,6 +111,8 @@ jobs:
 
           for e in errors:
               print(e)
-          # Treat as warning only — exit 0
+          # NOTE: This step is warning-only. Frontmatter issues are printed but
+          # do NOT fail the build (exit 0). To enforce strict compliance, change
+          # to sys.exit(1 if errors else 0).
           sys.exit(0)
           PYEOF
