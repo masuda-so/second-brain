@@ -29,7 +29,7 @@ Working in Claude Code
       ├─ harvest.py (hook-driven)
       │    ├─ queue  [UserPromptSubmit / PostToolUse]
       │    ├─ worker [Stop] ────────────→ Ideas/  or  Meta/Promotions/
-      │    └─ flush  [SessionEnd] ──────→ References/ stubs (L3)
+      │    └─ flush  [SessionEnd] ──────→ References/ auto-draft (L3) + Daily link
       │
       └─ [SessionEnd] session-distill.sh
            ├─ distill.py + distill-writer.py
@@ -45,9 +45,9 @@ Meta/Promotions/ → [human review] → /promote → References/  or  Ideas/
 
 | Level | Score | Auto-target |
 |-------|-------|-------------|
-| L1 | ≥ 3 | `Ideas/` |
+| L1 | ≥ 3 (≥ 2 in short sessions ≤ 5 prompts) | `Ideas/` |
 | L2 | ≥ 6 | `Meta/Promotions/` |
-| L3 | ≥ 9 | `References/` stub + Daily checklist |
+| L3 | ≥ 9 | `References/` auto-draft + Daily link |
 
 ## Repository layout
 
@@ -88,12 +88,12 @@ cd second-brain
 `init.sh` will:
 
 1. Verify `jq` and `python3`
-2. Write `SECOND_BRAIN_VAULT_PATH` to `.claude/settings.local.json`
-3. Patch `CLAUDE.md` with your vault path so Claude Code uses the right location
-4. Fix script permissions (`chmod +x`)
-5. Install the pre-commit hook symlink (`.git/hooks/pre-commit → hooks/pre-commit`)
+2. Write `SECOND_BRAIN_VAULT_PATH` to `.claude/settings.local.json` and patch `CLAUDE.md`
+3. Fix script permissions (`chmod +x`)
+4. Install the pre-commit hook symlink (`.git/hooks/pre-commit → hooks/pre-commit`)
+5. Register hooks and `CLAUDE_PLUGIN_ROOT` into `.claude/settings.local.json` (Plugin hooks install)
 6. Validate `hooks/hooks.json`
-7. Check expected vault folders
+7. Check expected vault folders and structure
 8. Sync starter templates into `Templates/`
 
 ### 3. Open in Claude Code
@@ -114,8 +114,8 @@ Environment variables are read from `.claude/settings.local.json` (machine-local
 ## Note lifecycle
 
 ```
-Ideas/           — auto-sketches, reviewed_status: false  (low score, unreviewed)
-Meta/Promotions/ — staged drafts waiting for human review
+Ideas/           — auto-sketches, harvest_promoted: false  (low score, unreviewed)
+Meta/Promotions/ — staged drafts waiting for human review  (reviewed_status: false)
 References/      — promoted, gate-cleared concept notes
 Projects/        — manual only, no auto-write
 ```
