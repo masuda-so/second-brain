@@ -33,44 +33,68 @@ import re
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # Directories to scan for knowledge notes
-SCAN_DIRS = ("References", "Ideas", "Projects", "Daily", "Weekly", "Monthly",
-             "Meta/Promotions", "Clippings", "Bases")
+SCAN_DIRS = (
+    "References",
+    "Ideas",
+    "Projects",
+    "Daily",
+    "Weekly",
+    "Monthly",
+    "Meta/Promotions",
+    "Clippings",
+    "Bases",
+)
 
 # Directories to include in wikilink source scanning (broader)
-LINK_SOURCE_DIRS = ("References", "Ideas", "Projects", "Daily", "Weekly",
-                    "Monthly", "Meta/Promotions", "Meta/Profile", "Clippings", "Bases")
+LINK_SOURCE_DIRS = (
+    "References",
+    "Ideas",
+    "Projects",
+    "Daily",
+    "Weekly",
+    "Monthly",
+    "Meta/Promotions",
+    "Meta/Profile",
+    "Clippings",
+    "Bases",
+)
 
 # Directories to skip entirely
-SKIP_DIRS = ("Sandbox", "Templates", "Meta/AI Sessions", "Meta/.cache",
-             ".obsidian", ".trash")
+SKIP_DIRS = (
+    "Sandbox",
+    "Templates",
+    "Meta/AI Sessions",
+    "Meta/.cache",
+    ".obsidian",
+    ".trash",
+)
 
 # Required frontmatter fields per note type (directory-based fallback)
 REQUIRED_FM: dict[str, list[str]] = {
-    "daily":     ["type", "date"],
-    "weekly":    ["type", "week"],
-    "monthly":   ["type", "period"],
-    "project":   ["type", "status"],
+    "daily": ["type", "date"],
+    "weekly": ["type", "week"],
+    "monthly": ["type", "period"],
+    "project": ["type", "status"],
     "reference": ["type", "topic"],
-    "idea":      ["type", "status"],
-    "clipping":  ["type", "source"],
+    "idea": ["type", "status"],
+    "clipping": ["type", "source"],
 }
 
 # Map directory to expected type
 DIR_TYPE_MAP: dict[str, str] = {
-    "Daily":           "daily",
-    "Weekly":          "weekly",
-    "Monthly":         "monthly",
-    "Projects":        "project",
-    "References":      "reference",
-    "Ideas":           "idea",
-    "Clippings":       "clipping",
+    "Daily": "daily",
+    "Weekly": "weekly",
+    "Monthly": "monthly",
+    "Projects": "project",
+    "References": "reference",
+    "Ideas": "idea",
+    "Clippings": "clipping",
 }
 
 STALE_DAYS = 90
@@ -81,11 +105,12 @@ WIKILINK_RE = re.compile(r"\[\[([^\]|#]+?)(?:[|#][^\]]*?)?\]\]")
 
 # ── Data types ────────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class Issue:
-    severity: str          # high, medium, low
-    check: str             # orphan_pages, broken_links, etc.
-    path: str              # relative vault path
+    severity: str  # high, medium, low
+    check: str  # orphan_pages, broken_links, etc.
+    path: str  # relative vault path
     message: str
     fixable: bool = False  # whether this issue can be auto-repaired by lint fix
 
@@ -128,9 +153,11 @@ class LintReport:
         lines: list[str] = []
         d = self.to_dict()
         s = d["summary"]
-        lines.append(f"Vault Lint: {s['total_notes']} notes scanned, "
-                      f"{s['issues']} issues found ({s['fixable']} fixable) "
-                      f"in {s['elapsed_ms']}ms")
+        lines.append(
+            f"Vault Lint: {s['total_notes']} notes scanned, "
+            f"{s['issues']} issues found ({s['fixable']} fixable) "
+            f"in {s['elapsed_ms']}ms"
+        )
         if s["by_severity"]["high"]:
             lines.append(f"  HIGH: {s['by_severity']['high']}")
         if s["by_severity"]["medium"]:
@@ -141,11 +168,14 @@ class LintReport:
         for issue in self.issues:
             marker = {"high": "!!!", "medium": " ! ", "low": " . "}[issue.severity]
             fix = " [fixable]" if issue.fixable else ""
-            lines.append(f"  {marker} [{issue.check}] {issue.path}: {issue.message}{fix}")
+            lines.append(
+                f"  {marker} [{issue.check}] {issue.path}: {issue.message}{fix}"
+            )
         return "\n".join(lines)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def warn(msg: str) -> None:
     print(f"lint: {msg}", file=sys.stderr)
@@ -166,9 +196,13 @@ def get_vault_path() -> pathlib.Path | None:
     return None
 
 
-def should_skip(path: pathlib.Path, vault: pathlib.Path) -> bool:
-    rel = str(path.relative_to(vault))
+def should_skip(rel: str) -> bool:
     return any(rel.startswith(skip) for skip in SKIP_DIRS)
+
+
+def get_rel_path(path: pathlib.Path, vault_str: str) -> str:
+    """Fast alternative to Path.relative_to(vault)."""
+    return str(path)[len(vault_str) :].lstrip(os.sep)
 
 
 FM_DELIM_RE = re.compile(r"^\s*---\s*$", re.MULTILINE)
@@ -184,9 +218,9 @@ def parse_frontmatter(text: str) -> dict[str, str]:
     if len(matches) < 2:
         return {}
     # First delimiter must be at or near the start (only whitespace before it)
-    if text[:matches[0].start()].strip():
+    if text[: matches[0].start()].strip():
         return {}
-    fm_text = text[matches[0].end():matches[1].start()]
+    fm_text = text[matches[0].end() : matches[1].start()]
     result: dict[str, str] = {}
     for line in fm_text.splitlines():
         line = line.strip()
@@ -200,10 +234,13 @@ def note_body_length(text: str) -> int:
     """Return character count of body text (after frontmatter, excluding headings)."""
     delims = list(FM_DELIM_RE.finditer(text))
     if len(delims) >= 2:
-        text = text[delims[1].end():]
+        text = text[delims[1].end() :]
     body_lines = [
-        line for line in text.splitlines()
-        if line.strip() and not line.strip().startswith("#") and not line.strip().startswith("---")
+        line
+        for line in text.splitlines()
+        if line.strip()
+        and not line.strip().startswith("#")
+        and not line.strip().startswith("---")
     ]
     return sum(len(line.strip()) for line in body_lines)
 
@@ -212,24 +249,6 @@ def infer_type_from_dir(path: pathlib.Path, vault: pathlib.Path) -> str | None:
     rel = path.relative_to(vault)
     first_part = rel.parts[0] if rel.parts else ""
     return DIR_TYPE_MAP.get(first_part)
-
-
-def resolve_wikilink(target: str, vault: pathlib.Path) -> pathlib.Path | None:
-    """Resolve a wikilink target to an actual file path, or None if not found."""
-    # Try exact path first (with .md)
-    candidate = vault / f"{target}.md"
-    if candidate.exists():
-        return candidate
-    # Try as-is (already has extension)
-    candidate = vault / target
-    if candidate.exists():
-        return candidate
-    # Search by stem (Obsidian resolves by filename across vault)
-    stem = pathlib.PurePosixPath(target).stem
-    for md in vault.rglob(f"{stem}.md"):
-        if not should_skip(md, vault):
-            return md
-    return None
 
 
 def _read_note(note: pathlib.Path, cache: dict[pathlib.Path, str]) -> str | None:
@@ -246,67 +265,62 @@ def _read_note(note: pathlib.Path, cache: dict[pathlib.Path, str]) -> str | None
 
 # ── Checks ────────────────────────────────────────────────────────────────────
 
-def collect_notes(vault: pathlib.Path) -> list[pathlib.Path]:
-    """Collect all .md files in scannable directories (excludes skipped dirs)."""
-    notes: list[pathlib.Path] = []
-    for md in vault.rglob("*.md"):
-        if should_skip(md, vault):
-            continue
-        # Skip vault root files (README.md, etc.)
-        rel = md.relative_to(vault)
-        if len(rel.parts) < 2:
-            continue
-        notes.append(md)
-    return sorted(notes)
 
+def scan_vault(
+    vault: pathlib.Path,
+) -> tuple[list[pathlib.Path], dict[str, str], dict[str, set[str]]]:
+    """Single pass over vault to collect notes, stems, and init inbound map."""
+    vault_str = str(vault)
+    # Sort for determinism in stem_index (first match wins)
+    all_md = sorted(list(vault.rglob("*.md")))
 
-def collect_all_notes(vault: pathlib.Path) -> list[pathlib.Path]:
-    """Collect ALL .md files for link resolution (includes AI Sessions etc.)."""
-    notes: list[pathlib.Path] = []
-    for md in vault.rglob("*.md"):
-        rel = str(md.relative_to(vault))
-        # Only skip truly non-content dirs
+    scan_set: list[pathlib.Path] = []
+    stem_index: dict[str, str] = {}
+    inbound: dict[str, set[str]] = {}
+
+    for md in all_md:
+        rel = get_rel_path(md, vault_str)
+        # Skip truly non-content dirs
         if any(rel.startswith(s) for s in (".obsidian", ".trash", "Templates")):
             continue
-        rel_parts = md.relative_to(vault).parts
-        if len(rel_parts) < 2:
+
+        # Skip vault root files (README.md, etc.)
+        if "/" not in rel and "\\" not in rel:
             continue
-        notes.append(md)
-    return sorted(notes)
 
-
-def build_link_graph(
-    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str]
-) -> tuple[dict[str, set[str]], dict[str, list[tuple[str, str]]]]:
-    """Build inbound link map and broken link map.
-
-    Uses collect_all_notes (including AI Sessions) for link resolution so that
-    links TO skipped directories are not false-positived as broken.
-    Only notes in the scan set are checked for outgoing links.
-
-    Returns:
-        inbound: {target_rel_no_ext: set of source rels that link to it}
-        broken:  {source_rel: [(wikilink_text, ...)]}
-    """
-    inbound: dict[str, set[str]] = {}
-    broken: dict[str, list[tuple[str, str]]] = {}
-
-    # Pre-index ALL notes (including AI Sessions) for link resolution
-    all_notes = collect_all_notes(vault)
-    stem_index: dict[str, str] = {}
-    for note in all_notes:
-        rel = str(note.relative_to(vault))
-        rel_no_ext = re.sub(r"\.md$", "", rel)
-        stem = note.stem
+        rel_no_ext = rel.removesuffix(".md")
+        stem = md.stem
         inbound.setdefault(rel_no_ext, set())
+
         # First match wins (prefer shorter paths)
         if stem not in stem_index:
             stem_index[stem] = rel_no_ext
 
+        if not should_skip(rel):
+            scan_set.append(md)
+
+    return scan_set, stem_index, inbound
+
+
+def build_link_graph(
+    notes: list[pathlib.Path],
+    vault: pathlib.Path,
+    stem_index: dict[str, str],
+    inbound: dict[str, set[str]],
+    content_cache: dict[pathlib.Path, str],
+) -> dict[str, list[tuple[str, str]]]:
+    """Build inbound link map and broken link map.
+
+    Returns:
+        broken:  {source_rel: [(wikilink_text, ...)]}
+    """
+    vault_str = str(vault)
+    broken: dict[str, list[tuple[str, str]]] = {}
+
     # Only scan outgoing links from the scan-set notes
     for note in notes:
-        rel = str(note.relative_to(vault))
-        rel_no_ext = re.sub(r"\.md$", "", rel)
+        rel = get_rel_path(note, vault_str)
+        rel_no_ext = rel.removesuffix(".md")
         text = _read_note(note, content_cache)
         if text is None:
             continue
@@ -317,7 +331,7 @@ def build_link_graph(
                 continue
 
             # Resolve: try exact path, then stem lookup
-            target_no_ext = re.sub(r"\.md$", "", target)
+            target_no_ext = target.removesuffix(".md")
             resolved = None
             if target_no_ext in inbound:
                 resolved = target_no_ext
@@ -331,7 +345,7 @@ def build_link_graph(
             else:
                 broken.setdefault(rel, []).append((target, m.group(0)))
 
-    return inbound, broken
+    return broken
 
 
 def check_orphan_pages(
@@ -340,20 +354,23 @@ def check_orphan_pages(
     inbound: dict[str, set[str]],
 ) -> list[Issue]:
     """Find References/ and Ideas/ notes with zero inbound wikilinks."""
+    vault_str = str(vault)
     issues: list[Issue] = []
     for note in notes:
-        rel = str(note.relative_to(vault))
-        rel_no_ext = re.sub(r"\.md$", "", rel)
+        rel = get_rel_path(note, vault_str)
+        rel_no_ext = rel.removesuffix(".md")
         if not (rel.startswith("References/") or rel.startswith("Ideas/")):
             continue
         links_in = inbound.get(rel_no_ext, set())
         if not links_in:
-            issues.append(Issue(
-                severity="medium",
-                check="orphan_pages",
-                path=rel,
-                message="no inbound wikilinks from other notes",
-            ))
+            issues.append(
+                Issue(
+                    severity="medium",
+                    check="orphan_pages",
+                    path=rel,
+                    message="no inbound wikilinks from other notes",
+                )
+            )
     return issues
 
 
@@ -364,22 +381,27 @@ def check_broken_links(
     issues: list[Issue] = []
     for source_rel, targets in broken.items():
         for target_text, raw in targets:
-            issues.append(Issue(
-                severity="low",
-                check="broken_links",
-                path=source_rel,
-                message=f"broken wikilink {raw} — no matching note for '{target_text}'",
-            ))
+            issues.append(
+                Issue(
+                    severity="low",
+                    check="broken_links",
+                    path=source_rel,
+                    message=f"broken wikilink {raw} — no matching note for '{target_text}'",
+                )
+            )
     return issues
 
 
 def check_frontmatter(
-    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str]
+    notes: list[pathlib.Path],
+    vault: pathlib.Path,
+    content_cache: dict[pathlib.Path, str],
 ) -> list[Issue]:
     """Check required YAML frontmatter fields based on note type/directory."""
+    vault_str = str(vault)
     issues: list[Issue] = []
     for note in notes:
-        rel = str(note.relative_to(vault))
+        rel = get_rel_path(note, vault_str)
         # Skip Promotions drafts — they have their own schema
         if rel.startswith("Meta/Promotions/"):
             continue
@@ -395,13 +417,15 @@ def check_frontmatter(
         required = REQUIRED_FM.get(note_type, [])
         missing = [f for f in required if f not in fm or not fm[f]]
         if missing:
-            issues.append(Issue(
-                severity="medium" if "type" in missing else "low",
-                check="frontmatter",
-                path=rel,
-                message=f"missing frontmatter: {', '.join(missing)}",
-                fixable="type" in missing,
-            ))
+            issues.append(
+                Issue(
+                    severity="medium" if "type" in missing else "low",
+                    check="frontmatter",
+                    path=rel,
+                    message=f"missing frontmatter: {', '.join(missing)}",
+                    fixable="type" in missing,
+                )
+            )
     return issues
 
 
@@ -411,15 +435,16 @@ def check_stale_notes(
     inbound: dict[str, set[str]],
 ) -> list[Issue]:
     """Flag old notes with no inbound links and no recent modification."""
+    vault_str = str(vault)
     issues: list[Issue] = []
     now = time.time()
     cutoff = now - (STALE_DAYS * 86400)
     for note in notes:
-        rel = str(note.relative_to(vault))
+        rel = get_rel_path(note, vault_str)
         # Only check knowledge notes (References, Ideas)
         if not (rel.startswith("References/") or rel.startswith("Ideas/")):
             continue
-        rel_no_ext = re.sub(r"\.md$", "", rel)
+        rel_no_ext = rel.removesuffix(".md")
         links_in = inbound.get(rel_no_ext, set())
         if links_in:
             continue
@@ -429,22 +454,27 @@ def check_stale_notes(
             continue
         if mtime < cutoff:
             days_old = int((now - mtime) / 86400)
-            issues.append(Issue(
-                severity="low",
-                check="stale_notes",
-                path=rel,
-                message=f"no inbound links, last modified {days_old} days ago",
-            ))
+            issues.append(
+                Issue(
+                    severity="low",
+                    check="stale_notes",
+                    path=rel,
+                    message=f"no inbound links, last modified {days_old} days ago",
+                )
+            )
     return issues
 
 
 def check_low_quality(
-    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str]
+    notes: list[pathlib.Path],
+    vault: pathlib.Path,
+    content_cache: dict[pathlib.Path, str],
 ) -> list[Issue]:
     """Flag Ideas/ notes with near-empty body."""
+    vault_str = str(vault)
     issues: list[Issue] = []
     for note in notes:
-        rel = str(note.relative_to(vault))
+        rel = get_rel_path(note, vault_str)
         if not rel.startswith("Ideas/"):
             continue
         text = _read_note(note, content_cache)
@@ -452,24 +482,31 @@ def check_low_quality(
             continue
         body_len = note_body_length(text)
         if body_len < LOW_QUALITY_CHARS:
-            issues.append(Issue(
-                severity="medium",
-                check="low_quality",
-                path=rel,
-                message=f"Ideas/ note with only {body_len} chars of body text",
-            ))
+            issues.append(
+                Issue(
+                    severity="medium",
+                    check="low_quality",
+                    path=rel,
+                    message=f"Ideas/ note with only {body_len} chars of body text",
+                )
+            )
     return issues
 
 
 # ── Fix ───────────────────────────────────────────────────────────────────────
 
+
 def fix_frontmatter(
-    notes: list[pathlib.Path], vault: pathlib.Path, content_cache: dict[pathlib.Path, str], dry_run: bool = False
+    notes: list[pathlib.Path],
+    vault: pathlib.Path,
+    content_cache: dict[pathlib.Path, str],
+    dry_run: bool = False,
 ) -> list[dict]:
     """Add missing 'type' field to notes based on directory."""
+    vault_str = str(vault)
     fixed: list[dict] = []
     for note in notes:
-        rel = str(note.relative_to(vault))
+        rel = get_rel_path(note, vault_str)
         if rel.startswith("Meta/Promotions/"):
             continue
         text = _read_note(note, content_cache)
@@ -487,7 +524,11 @@ def fix_frontmatter(
         delims = list(FM_DELIM_RE.finditer(text))
         if len(delims) >= 2:
             # Insert before closing delimiter
-            new_text = text[:delims[1].start()] + f"\ntype: {expected_type}" + text[delims[1].start():]
+            new_text = (
+                text[: delims[1].start()]
+                + f"\ntype: {expected_type}"
+                + text[delims[1].start() :]
+            )
         else:
             new_text = f"---\ntype: {expected_type}\n---\n{text}"
 
@@ -504,17 +545,17 @@ def fix_frontmatter(
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def run_check(vault: pathlib.Path, quick: bool = False) -> LintReport:
     t0 = time.monotonic()
-    notes = collect_notes(vault)
+    notes, stem_index, inbound = scan_vault(vault)
+
     report = LintReport(total_notes=len(notes))
-    report.scanned_dirs = [
-        d for d in SCAN_DIRS if (vault / d).is_dir()
-    ]
+    report.scanned_dirs = [d for d in SCAN_DIRS if (vault / d).is_dir()]
     content_cache: dict[pathlib.Path, str] = {}
 
     # Always run: frontmatter + broken links (fast)
-    inbound, broken = build_link_graph(notes, vault, content_cache)
+    broken = build_link_graph(notes, vault, stem_index, inbound, content_cache)
     report.issues.extend(check_frontmatter(notes, vault, content_cache))
     report.issues.extend(check_broken_links(broken))
 
@@ -533,8 +574,10 @@ def run_check(vault: pathlib.Path, quick: bool = False) -> LintReport:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("Usage: lint.py {check|quick|fix} [--format json|text] [--dry-run]",
-              file=sys.stderr)
+        print(
+            "Usage: lint.py {check|quick|fix} [--format json|text] [--dry-run]",
+            file=sys.stderr,
+        )
         return 0
 
     subcmd = sys.argv[1]
@@ -563,7 +606,7 @@ def main() -> int:
 
     elif subcmd == "fix":
         dry_run = "--dry-run" in sys.argv
-        notes = collect_notes(vault)
+        notes, _, _ = scan_vault(vault)
         content_cache: dict[pathlib.Path, str] = {}
         fixed = fix_frontmatter(notes, vault, content_cache, dry_run=dry_run)
         result = {"fixed": fixed, "dry_run": dry_run}
