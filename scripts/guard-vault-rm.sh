@@ -41,8 +41,9 @@ if [[ -z "$VAULT_PATH" ]]; then
   exit 0
 fi
 
-# Check if command contains an rm/rmdir invocation that references the vault path
-if printf '%s' "$COMMAND" | grep -qE '(^|[[:space:]|;&])(rm|rmdir)[[:space:]]' && \
+# Check if command contains an rm/rmdir invocation that references the vault path.
+# We match 'rm' or 'rmdir' as a command, including path-qualified versions (e.g. /bin/rm).
+if printf '%s' "$COMMAND" | grep -qE '(^|[[:space:]|;&])(.*/)?(rm|rmdir)([[:space:]]|$)' && \
    printf '%s' "$COMMAND" | grep -qF "$VAULT_PATH"; then
   echo "Blocked: rm/rmdir targeting vault path '$VAULT_PATH' is not allowed." >&2
   exit 2

@@ -1,0 +1,4 @@
+## 2025-05-31 - Robust Command Guarding for Vault Protection
+**Vulnerability:** The `guard-vault-rm.sh` script could be bypassed by using path-qualified commands (e.g., `/bin/rm` instead of `rm`) or by using compound commands if naive exclusion logic (like `grep -v echo`) was used to reduce false positives.
+**Learning:** Shell command filtering using regex is fragile. An initial attempt to reduce false positives for `echo rm` using `grep -v` introduced a critical bypass where `echo rm; rm $VAULT_PATH` would be allowed because the `echo rm` part satisfied the exclusion.
+**Prevention:** Avoid exclusion-based filtering for security guards. Use comprehensive regex that accounts for command prefixes (paths) and word boundaries, and always test with compound commands and malicious bypass attempts.
