@@ -1,152 +1,128 @@
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+# second-brain
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status: Early Access](https://img.shields.io/badge/status-early%20access-blue.svg)](#)
 [![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-lightgrey.svg)](#)
 
-[日本語版はこちら](./README.ja.md)
+[English READMEはこちら](./README.en.md)
 
-# second-brain
+## このプロジェクトについて
 
-A local Claude Code plugin that turns an Obsidian vault into an autonomous Knowledge OS.
-This repository is the control layer: session capture, guardrails, structured note drafts, and promotion workflows.
+`second-brain` は、Claude Code と Obsidian vault を統合した Knowledge OS の制御レイヤーです。
+Claude Code セッションの活動を自動的に取り込み、構造化された Obsidian ノートを生成します。
 
-## What the project does
+## できること
 
-`second-brain` captures Claude Code session activity and uses it to generate structured Obsidian notes automatically.
-It manages:
+- Claude Code のセッションライフサイクル（開始・プロンプト・ツール実行・編集・終了）を hook で捕捉
+- プロンプト・ツール・編集結果のセッションログを vault に反映
+- 破壊的操作をブロックする検証スクリプト(`PreToolUse`/`PostToolUse` ガード)
+- `Meta/AI Sessions` へのセッション記録と日次・週次・月次ノートの自動作成
+- `Distill` によるドラフト蒸留と `Meta/Promotions` へのステージング
+- `/promote` ワークフローで `References/` 等への安全な昇格
+- git pre-commit フックで vault への誤操作を防止
 
-- Claude Code hooks for session lifecycle events
-- local plugin commands and agents for workflow control
-- guard scripts that protect your vault from unsafe edits
-- staged drafting and promotion into `Ideas/`, `Meta/Promotions/`, and `References/`
+## なぜ作ったか / メリット
 
-The Obsidian vault is the long-term memory store, while this repo orchestrates how notes are captured, reviewed, and promoted.
+- セッション中の思考や判断を log に散らばらせないで、vault に構造化して蓄積できる
+- AI の出力を vault の命名規則・フォルダ構成になじませられる
+- `guard-files.sh`、`guard-vault-rm.sh`、`on-edit-check.sh` により破壊的操作を防止
+- 人間によるレビューを前提とした昇格フローで、edit trust を維持
+- `.claude/settings.local.json` に vault パスを集約し、`.gitignore` で privacy を保護
 
-## Why this project is useful
+## 使い方
 
-- Enables friction-free knowledge capture from Claude Code sessions
-- Keeps AI-generated output aligned to structured vault conventions
-- Prevents accidental destructive shell or file operations
-- Automates daily, weekly, monthly, and session summaries
-- Makes review explicit by staging draft content before final promotion
+### 動作要件
 
-## Key features
+- macOS または Linux
+- ローカルプラグイン対応の Claude Code
+- `jq`
+- `python3`
+- Obsidian vault（対応テンプレート推奨）
 
-- Hook wiring for `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, and `SessionEnd`
-- Prompt and tool capture via `scripts/session-memory.sh`
-- Harvest queue, worker, and flush pipeline in `scripts/harvest.py`
-- Draft distillation with `scripts/distill.py` and `scripts/distill-draft.py`
-- Promotion workflow with `scripts/promote.py`
-- Observable vault guardrail scripts under `scripts/`
-- Plugin manifest, agent prompts, commands, and skills for Claude Code
-
-## Getting started
-
-### Prerequisites
-
-- macOS or Linux
-- Claude Code with local plugin support
-- `jq` installed
-- `python3` available on `PATH`
-- An Obsidian vault with a compatible note structure
-
-### 1. Clone the repository
+### セットアップ
 
 ```bash
 git clone https://github.com/masuda-so/second-brain.git
 cd second-brain
-```
-
-### 2. Configure your vault path
-
-Run the init helper with your vault location:
-
-```bash
 ./scripts/init.sh "/path/to/your/Obsidian Vault"
 ```
 
-This setup step:
+`init.sh` は以下を実行します:
 
-- validates `jq` and `python3`
-- writes `SECOND_BRAIN_VAULT_PATH` to `.claude/settings.local.json`
-- patches `CLAUDE.md` for the vault path
-- installs the git pre-commit hook
-- registers plugin hooks into local settings
-- validates hook wiring and vault structure
-- syncs starter templates into `Templates/`
+- `jq` / `python3` の存在確認
+- `.claude/settings.local.json` への `SECOND_BRAIN_VAULT_PATH` 書き込み
+- `CLAUDE.md` の vault path patch
+- git pre-commit フックのインストール
+- `hooks/hooks.json` のローカル設定への登録
+- フックの JSON 妥当性チェック
+- テンプレートの vault への同期
 
-### 3. Open in Claude Code
+### Claude Code での起動
 
-Open this repo as a Claude Code project. The plugin manifest, hooks, commands, and skills will be discovered automatically.
+このリポジトリを Claude Code プロジェクトとして開くと、プラグインマニフェストとフックが自動的に認識されます。
 
-### 4. Use built-in commands
+### ビルトインコマンド
 
-In Claude Code, use commands such as:
+- `/status` — プラグインの状態と健全性
+- `/logs` — 直近の hook / スクリプト出力
+- `/promote` — `Meta/Promotions/` のドラフトを昇格
 
-- `/status` — view plugin status and session health
-- `/logs` — inspect recent hook and script output
-- `/promote` — move approved drafts from `Meta/Promotions/`
+## ディレクトリ構成
 
-## Repository structure
+| パス | 役割 |
+|------|-------|
+| [`hooks/hooks.json`](./hooks/hooks.json) | Claude Code フックの登録 |
+| [`hooks/pre-commit`](./hooks/pre-commit) | コミット前に vault の安全性を検査 |
+| [`scripts/init.sh`](./scripts/init.sh) | セットアップと検証 |
+| [`scripts/harvest.py`](./scripts/harvest.py) | セッション成果物の収集 |
+| [`scripts/distill.py`](./scripts/distill.py) | 要約・ノートへの蒸留 |
+| [`scripts/distill-draft.py`](./scripts/distill-draft.py) | ドラフト生成 |
+| [`scripts/promote.py`](./scripts/promote.py) | 承認済みドラフトの昇格 |
+| [`scripts/guard-files.sh`](./scripts/guard-files.sh) | ファイル操作のガード |
+| [`scripts/guard-vault-rm.sh`](./scripts/guard-vault-rm.sh) | vault 削除操作の防止 |
+| [`scripts/on-edit-check.sh`](./scripts/on-edit-check.sh) | 編集検証フック |
+| [`commands/`](./commands) | `/status`, `/logs`, `/promote` 等のエントリポイント |
+| [`agents/`](./agents) | セッション要約、セキュリティレビュー、パフォーマンステスト等 |
+| [`skills/`](./skills) | ドラフト蒸留、defuddle、Markdown 変換、Bases 操作等 |
+| [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) | フック・スクリプトの CI |
+| [`pyproject.toml`](./pyproject.toml) | pytest 設定 |
+| [`CLAUDE.md`](./CLAUDE.md) | vault 運用ルールと AI の行動規範 |
 
-| Path | Purpose |
-|------|---------|
-| [`CLAUDE.md`](./CLAUDE.md) | Operating rules, vault conventions, AI behaviour |
-| [`hooks/hooks.json`](./hooks/hooks.json) | Session hook wiring |
-| [`hooks/pre-commit`](./hooks/pre-commit) | Git guard hook for vault safety |
-| [`scripts/`](./scripts) | Core shell and Python utilities |
-| [`agents/`](./agents) | Claude agent prompts |
-| [`commands/`](./commands) | Operator command documentation |
-| [`skills/`](./skills) | Obsidian workflow helper skills |
-| [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) | Claude Code plugin manifest |
-| [`settings.json.example`](./settings.json.example) | Example environment settings |
+## ノートのライフサイクル
 
-## How it works
+- `Ideas/` — スコア低めの自動草案
+- `Meta/Promotions/` — 人間レビュー待ちのドラフト
+- `References/` — 昇格済みの高信頼度ナレッジ
+- `Projects/` — 手動管理のプロジェクトノート
+- `Clippings/` — 未処理の取り込み素材
 
-Session lifecycle hooks capture prompts, tools, and edits, then surface structured drafts for review:
+## テスト
 
-- `SessionStart` initializes session context, daily/weekly notes, and starts capture
-- `UserPromptSubmit` logs prompts and queues harvested content
-- `PreToolUse` blocks unsafe file or shell operations
-- `PostToolUse` validates edits and captures tool outputs
-- `Stop` runs the harvest worker
-- `SessionEnd` flushes queued content and distills session notes
+```bash
+# 依存の導入（必要な場合）
+brew install jq
 
-## Note lifecycle
+# 初期化検証
+bash scripts/init.sh "/path/to/tmp/vault"
 
-- `Ideas/` — low-score auto-sketches
-- `Meta/Promotions/` — staged drafts awaiting human review
-- `References/` — high-confidence promoted content
-- `Projects/` — manual-only project notes
+# Python ユニットテスト（pytest 使用を想定）
+python3 -m pytest scripts/tests/
+```
 
-## Configuration
+## ヘルプ
 
-Local configuration belongs in `.claude/settings.local.json`. Key environment variables:
+- [CLAUDE.md](./CLAUDE.md) — vault の運用ルール
+- [commands/status.md](./commands/status.md) — `/status` の詳細
+- [commands/logs.md](./commands/logs.md) — `/logs` の詳細
+- issue — セットアップ手歴と `./scripts/init.sh` の出力を添えて
 
-- `SECOND_BRAIN_VAULT_PATH` — required absolute vault path
-- `SECOND_BRAIN_DAILY_DIR` — default `Daily`
-- `SECOND_BRAIN_SESSION_DIR` — default `Meta/AI Sessions`
-- `SECOND_BRAIN_CAPTURE_STRICT` — `1` makes hook failures fatal instead of fail-open
+## メンテナー・貢献
 
-## Help and documentation
+メンテナー: **masudaso**
 
-- [`CLAUDE.md`](./CLAUDE.md) — main operating guide and vault rules
-- [`commands/status.md`](./commands/status.md) — status command reference
-- [`commands/logs.md`](./commands/logs.md) — log troubleshooting reference
-- [`README.ja.md`](./README.ja.md) — Japanese README
+Pull Request / Issue を歓迎します。
+変更は小さく可逆的に、`CLAUDE.md` に整合させ、ユーザー vault を破壊しないでください。
 
-If you need help, open an issue with your setup details and the output from `./scripts/init.sh`.
+## ライセンス
 
-## Maintainers and contributions
-
-Maintained by **masudaso**.
-
-Contributions are welcome via issues and pull requests. Prefer changes that are:
-
-- small and reversible
-- safe for user vaults
-- aligned with `CLAUDE.md` rules
-- documented when they affect setup or operator workflow
-
-## License
-
-Released under the **MIT License**. See [`LICENSE`](./LICENSE) for details.
+[LICENSE](./LICENSE) を参照してください。
