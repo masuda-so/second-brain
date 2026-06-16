@@ -1,45 +1,47 @@
 # second-brain
 
+[日本語版](README.ja.md)
+
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status: Early Access](https://img.shields.io/badge/status-early%20access-blue.svg)](#)
 [![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-lightgrey.svg)](#)
 
-[English READMEはこちら](./README.en.md)
+[Japanese README is here](./README.md)
 
-## このプロジェクトについて
+## What it is
 
-`second-brain` は、Claude Code と Obsidian vault を統合した Knowledge OS の制御レイヤーです。
-Claude Code セッションの活動を自動的に取り込み、構造化された Obsidian ノートを生成します。
+`second-brain` is a control layer for a Knowledge OS that integrates Claude Code with an Obsidian vault.
+It automatically captures Claude Code session activity and produces structured Obsidian notes.
 
-## できること
+## Key capabilities
 
-- Claude Code のセッションライフサイクル（開始・プロンプト・ツール実行・編集・終了）を hook で捕捉
-- プロンプト・ツール・編集結果のセッションログを vault に反映
-- 破壊的操作をブロックする検証スクリプト(`PreToolUse`/`PostToolUse` ガード)
-- `Meta/AI Sessions` へのセッション記録と日次・週次・月次ノートの自動作成
-- `Distill` によるドラフト蒸留と `Meta/Promotions` へのステージング
-- `/promote` ワークフローで `References/` 等への安全な昇格
-- git pre-commit フックで vault への誤操作を防止
+- Hook-based capture of the Claude Code session lifecycle (start, prompt submit, tool use, edit, stop, end)
+- Session logging: prompts, tool outputs, and edits are reflected into the vault
+- Guard scripts that block destructive operations (`PreToolUse` / `PostToolUse` guards)
+- Automatic session logs in `Meta/AI Sessions` plus daily, weekly, and monthly note creation
+- Draft distillation via `Distill` into `Meta/Promotions`
+- Safe promotion workflow via `/promote` to `References/` and other durable areas
+- Git pre-commit hook to prevent unsafe vault changes
 
-## なぜ作ったか / メリット
+## Why it's useful
 
-- セッション中の思考や判断を log に散らばらせないで、vault に構造化して蓄積できる
-- AI の出力を vault の命名規則・フォルダ構成になじませられる
-- `guard-files.sh`、`guard-vault-rm.sh`、`on-edit-check.sh` により破壊的操作を防止
-- 人間によるレビューを前提とした昇格フローで、edit trust を維持
-- `.claude/settings.local.json` に vault パスを集約し、`.gitignore` で privacy を保護
+- Keeps thoughts and decisions organized in the vault during sessions, instead of leaving them scattered in logs
+- Aligns AI outputs to your vault naming and folder conventions
+- Prevents destructive operations through guard scripts (`guard-files.sh`, `guard-vault-rm.sh`, `on-edit-check.sh`)
+- Review-gated promotion flow maintains edit trust between humans and AI
+- `.claude/settings.local.json` centralizes vault configuration while `.gitignore` preserves privacy
 
-## 使い方
+## Getting started
 
-### 動作要件
+### Requirements
 
-- macOS または Linux
-- ローカルプラグイン対応の Claude Code
+- macOS or Linux
+- Claude Code with local plugin support
 - `jq`
 - `python3`
-- Obsidian vault（対応テンプレート推奨）
+- An Obsidian vault (with the expected folder structure is recommended)
 
-### セットアップ
+### Setup
 
 ```bash
 git clone https://github.com/masuda-so/second-brain.git
@@ -47,82 +49,80 @@ cd second-brain
 ./scripts/init.sh "/path/to/your/Obsidian Vault"
 ```
 
-`init.sh` は以下を実行します:
+`init.sh` verifies:
 
-- `jq` / `python3` の存在確認
-- `.claude/settings.local.json` への `SECOND_BRAIN_VAULT_PATH` 書き込み
-- `CLAUDE.md` の vault path patch
-- git pre-commit フックのインストール
-- `hooks/hooks.json` のローカル設定への登録
-- フックの JSON 妥当性チェック
-- テンプレートの vault への同期
+- `jq` and `python3` are installed
+- writes `SECOND_BRAIN_VAULT_PATH` to `.claude/settings.local.json`
+- patches `CLAUDE.md` with the active vault path
+- installs the git pre-commit hook
+- registers `hooks/hooks.json` into local settings
+- validates hook JSON
+- syncs templates into the vault
 
-### Claude Code での起動
+### Running in Claude Code
 
-このリポジトリを Claude Code プロジェクトとして開くと、プラグインマニフェストとフックが自動的に認識されます。
+Open this repo as a Claude Code project. The plugin manifest and hooks are discovered automatically.
 
-### ビルトインコマンド
+### Built-in commands
 
-- `/status` — プラグインの状態と健全性
-- `/logs` — 直近の hook / スクリプト出力
-- `/promote` — `Meta/Promotions/` のドラフトを昇格
+- `/status` — plugin health and status
+- `/logs` — recent hook / script output
+- `/promote` — promote staged drafts from `Meta/Promotions`
 
-## ディレクトリ構成
+## Repository layout
 
-| パス | 役割 |
-|------|-------|
-| [`hooks/hooks.json`](./hooks/hooks.json) | Claude Code フックの登録 |
-| [`hooks/pre-commit`](./hooks/pre-commit) | コミット前に vault の安全性を検査 |
-| [`scripts/init.sh`](./scripts/init.sh) | セットアップと検証 |
-| [`scripts/harvest.py`](./scripts/harvest.py) | セッション成果物の収集 |
-| [`scripts/distill.py`](./scripts/distill.py) | 要約・ノートへの蒸留 |
-| [`scripts/distill-draft.py`](./scripts/distill-draft.py) | ドラフト生成 |
-| [`scripts/promote.py`](./scripts/promote.py) | 承認済みドラフトの昇格 |
-| [`scripts/guard-files.sh`](./scripts/guard-files.sh) | ファイル操作のガード |
-| [`scripts/guard-vault-rm.sh`](./scripts/guard-vault-rm.sh) | vault 削除操作の防止 |
-| [`scripts/on-edit-check.sh`](./scripts/on-edit-check.sh) | 編集検証フック |
-| [`commands/`](./commands) | `/status`, `/logs`, `/promote` 等のエントリポイント |
-| [`agents/`](./agents) | セッション要約、セキュリティレビュー、パフォーマンステスト等 |
-| [`skills/`](./skills) | ドラフト蒸留、defuddle、Markdown 変換、Bases 操作等 |
-| [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) | フック・スクリプトの CI |
-| [`pyproject.toml`](./pyproject.toml) | pytest 設定 |
-| [`CLAUDE.md`](./CLAUDE.md) | vault 運用ルールと AI の行動規範 |
+| Path | Role |
+|------|------|
+| [`hooks/hooks.json`](./hooks/hooks.json) | Claude Code hook registrations |
+| [`hooks/pre-commit`](./hooks/pre-commit) | Pre-commit guard for vault safety |
+| [`scripts/init.sh`](./scripts/init.sh) | Bootstrap and validation |
+| [`scripts/harvest.py`](./scripts/harvest.py) | Session artifact collection |
+| [`scripts/distill.py`](./scripts/distill.py) | Summarization and note distillation |
+| [`scripts/distill-draft.py`](./scripts/distill-draft.py) | Draft generation |
+| [`scripts/promote.py`](./scripts/promote.py) | Approved draft promotion |
+| [`scripts/guard-files.sh`](./scripts/guard-files.sh) | File-operation guards |
+| [`scripts/guard-vault-rm.sh`](./scripts/guard-vault-rm.sh) | Prevents vault deletion operations |
+| [`scripts/on-edit-check.sh`](./scripts/on-edit-check.sh) | Edit validation hook |
+| [`commands/`](./commands) | Entry points for `/status`, `/logs`, `/promote`, etc. |
+| [`agents/`](./agents) | Session summarizer, security reviewer, performance tester, and others |
+| [`skills/`](./skills) | Distillation, defuddling, Markdown conversion, Bases operations, and more |
+| [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) | CI for hooks, scripts, and init |
+| [`pyproject.toml`](./pyproject.toml) | pytest configuration |
+| [`CLAUDE.md`](./CLAUDE.md) | Vault operating rules and AI behavior |
 
-## ノートのライフサイクル
+## Note lifecycle
 
-- `Ideas/` — スコア低めの自動草案
-- `Meta/Promotions/` — 人間レビュー待ちのドラフト
-- `References/` — 昇格済みの高信頼度ナレッジ
-- `Projects/` — 手動管理のプロジェクトノート
-- `Clippings/` — 未処理の取り込み素材
+- `Ideas/` — low-score auto-sketches
+- `Meta/Promotions/` — drafts awaiting human review
+- `References/` — promoted, high-confidence knowledge
+- `Projects/` — manually curated project notes
+- `Clippings/` — unprocessed source material
 
-## テスト
+## Testing
 
 ```bash
-# 依存の導入（必要な場合）
 brew install jq
 
-# 初期化検証
+# init validation
 bash scripts/init.sh "/path/to/tmp/vault"
 
-# Python ユニットテスト（pytest 使用を想定）
+# Python unit tests
 python3 -m pytest scripts/tests/
 ```
 
-## ヘルプ
+## Help
 
-- [CLAUDE.md](./CLAUDE.md) — vault の運用ルール
-- [commands/status.md](./commands/status.md) — `/status` の詳細
-- [commands/logs.md](./commands/logs.md) — `/logs` の詳細
-- issue — セットアップ手歴と `./scripts/init.sh` の出力を添えて
+- [CLAUDE.md](./CLAUDE.md) — vault operating conventions
+- [commands/status.md](./commands/status.md) — `/status` reference
+- [commands/logs.md](./commands/logs.md) — `/logs` reference
+- issues — include setup steps and `./scripts/init.sh` output
 
-## メンテナー・貢献
+## Maintainers and contributing
 
-メンテナー: **masudaso**
+Maintainer: **masudaso**
 
-Pull Request / Issue を歓迎します。
-変更は小さく可逆的に、`CLAUDE.md` に整合させ、ユーザー vault を破壊しないでください。
+Issues and pull requests are welcome. Prefer small, reversible changes that keep user vaults safe and align with [`CLAUDE.md`](./CLAUDE.md). Update docs when changes affect setup or operator workflows.
 
-## ライセンス
+## License
 
-[LICENSE](./LICENSE) を参照してください。
+MIT License. See [LICENSE](./LICENSE).
