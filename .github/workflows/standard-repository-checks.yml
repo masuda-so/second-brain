@@ -1,0 +1,37 @@
+name: Standard Repository Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  repository-hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required governance files
+        run: |
+          set -eu
+          test -f README.md
+          test -f CONTRIBUTING.md
+          test -f SECURITY.md
+          test -f .github/pull_request_template.md
+      - name: Banned artifacts
+        run: |
+          set -eu
+          banned='(^|/)(\.DS_Store|Thumbs\.db|memory\.db|\.env)$'
+          if find . -path ./.git -prune -o -type f -print | grep -E "$banned"; then
+            echo "Banned generated, local, or secret-bearing artifact found."
+            exit 1
+          fi
+      - name: README language links
+        run: |
+          set -eu
+          if [ -f README.ja.md ]; then
+            grep -Eq 'README\.ja\.md|日本語' README.md
+          fi
