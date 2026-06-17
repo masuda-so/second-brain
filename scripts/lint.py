@@ -296,7 +296,7 @@ def build_link_graph(
     stem_index: dict[str, str] = {}
     for note in all_notes:
         rel = str(note.relative_to(vault))
-        rel_no_ext = re.sub(r"\.md$", "", rel)
+        rel_no_ext = rel.removesuffix(".md")
         stem = note.stem
         inbound.setdefault(rel_no_ext, set())
         # First match wins (prefer shorter paths)
@@ -306,7 +306,7 @@ def build_link_graph(
     # Only scan outgoing links from the scan-set notes
     for note in notes:
         rel = str(note.relative_to(vault))
-        rel_no_ext = re.sub(r"\.md$", "", rel)
+        rel_no_ext = rel.removesuffix(".md")
         text = _read_note(note, content_cache)
         if text is None:
             continue
@@ -317,7 +317,7 @@ def build_link_graph(
                 continue
 
             # Resolve: try exact path, then stem lookup
-            target_no_ext = re.sub(r"\.md$", "", target)
+            target_no_ext = target.removesuffix(".md")
             resolved = None
             if target_no_ext in inbound:
                 resolved = target_no_ext
@@ -343,7 +343,7 @@ def check_orphan_pages(
     issues: list[Issue] = []
     for note in notes:
         rel = str(note.relative_to(vault))
-        rel_no_ext = re.sub(r"\.md$", "", rel)
+        rel_no_ext = rel.removesuffix(".md")
         if not (rel.startswith("References/") or rel.startswith("Ideas/")):
             continue
         links_in = inbound.get(rel_no_ext, set())
@@ -419,7 +419,7 @@ def check_stale_notes(
         # Only check knowledge notes (References, Ideas)
         if not (rel.startswith("References/") or rel.startswith("Ideas/")):
             continue
-        rel_no_ext = re.sub(r"\.md$", "", rel)
+        rel_no_ext = rel.removesuffix(".md")
         links_in = inbound.get(rel_no_ext, set())
         if links_in:
             continue
