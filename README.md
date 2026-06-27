@@ -1,12 +1,8 @@
 # second-brain
 
-[日本語版](README.ja.md)
-
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status: Early Access](https://img.shields.io/badge/status-early%20access-blue.svg)](#)
 [![Version: 0.2.0](https://img.shields.io/badge/version-0.2.0-lightgrey.svg)](#)
-
-[Japanese README is here](./README.md)
 
 ## Overview
 
