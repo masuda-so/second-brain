@@ -6,7 +6,7 @@
 
 [English READMEはこちら](./README.en.md)
 
-## このプロジェクトについて
+## Overview
 
 `second-brain` は、Claude Code と Obsidian vault を統合した Knowledge OS の制御レイヤーです。
 Claude Code セッションの活動を自動的に取り込み、構造化された Obsidian ノートを生成します。

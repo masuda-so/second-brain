@@ -8,7 +8,7 @@
 
 [Japanese README is here](./README.md)
 
-## What it is
+## Overview
 
 `second-brain` is a control layer for a Knowledge OS that integrates Claude Code with an Obsidian vault.
 It automatically captures Claude Code session activity and produces structured Obsidian notes.
@@ -31,7 +31,7 @@ It automatically captures Claude Code session activity and produces structured O
 - Review-gated promotion flow maintains edit trust between humans and AI
 - `.claude/settings.local.json` centralizes vault configuration while `.gitignore` preserves privacy
 
-## Getting started
+## Quickstart
 
 ### Requirements
 
@@ -98,6 +98,14 @@ Open this repo as a Claude Code project. The plugin manifest and hooks are disco
 - `Projects/` — manually curated project notes
 - `Clippings/` — unprocessed source material
 
+## Status
+
+Early access control layer for Claude Code sessions and Obsidian vault integration.
+
+## Quickstart
+
+## Development
+
 ## Testing
 
 ```bash
@@ -109,6 +117,8 @@ bash scripts/init.sh "/path/to/tmp/vault"
 # Python unit tests
 python3 -m pytest scripts/tests/
 ```
+
+## Support
 
 ## Help
 

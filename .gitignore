@@ -3,6 +3,13 @@ scripts/__pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.ruff_cache/
+.uv-cache/
+.uv-python/
+.venv/
+.envs/
+*.egg-info/
 
 # Claude Code local config (machine-specific)
 .claude/
