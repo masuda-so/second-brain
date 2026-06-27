@@ -102,6 +102,12 @@ Open this repo as a Claude Code project. The plugin manifest and hooks are disco
 
 Early access control layer for Claude Code sessions and Obsidian vault integration.
 
+## Where to get help
+
+- Read [CLAUDE.md](./CLAUDE.md) for vault operating conventions.
+- Check [commands/status.md](./commands/status.md) and [commands/logs.md](./commands/logs.md) for built-in commands.
+- Open an issue with setup details and the output of [scripts/init.sh](./scripts/init.sh) if you hit a problem.
+
 ## Quickstart
 
 ## Development
